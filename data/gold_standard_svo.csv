@@ -38,7 +38,7 @@ sent_id,sentence,agent,event,target,passive_approx,is_passive
 36,He ate a burger and drank a soda.,he,eat,burger,0,0
 37,Both the manager and the employees attended the meeting.,manager,attend,meeting,0,0
 38,She wants to learn French.,she,want learn,french,0,0
-39,They decided to stay home.,they,decide stay,,0,0
+39,They decided to stay home.,they,decide stay home,,0,0
 40,He likes to play guitar.,he,like play,guitar,0,0
 41,I need to find a new job.,i,need find,new job,0,0
 42,The company should increase its profits.,company,increase,its profit,0,0
