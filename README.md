@@ -54,8 +54,8 @@ The TEA library correctly distinguishes between the semantic agent and the gramm
 | *The hacker destroyed the sensitive database.* | hacker | sensitive database |
 
 ### 2. SVO Extraction Validation
-To ensure accuracy, we validated the extraction logic against a **Gold Standard** of 100 exemplary sentences (`data/gold_standard_svo.csv`) covering active/passive voices, imperatives, and complex clauses.
-- **Metric-based Evaluation**: We report Precision, Recall, and F1 scores for each component (Agent, Event, Target).
+To ensure accuracy, we validated the extraction logic against a **Gold Standard** of 122 manually annotated sentences (`data/gold_standard_svo.csv`) covering active/passive voices, imperatives, and complex clauses, plus the 1,150-sentence PassivePy crowd-sourced dataset for passive voice detection (`data/passive_gold.csv`).
+- **Metric-based Evaluation**: We report per-role Accuracy for each component (Agent, Event, Target) and per-class accuracy for passive voice detection (see `Docs & Guides/Validation.ipynb`).
 - **Benchmark Driven**: The implementation is continuously tested against manually annotated data to avoid regressions.
 
 ---
@@ -77,12 +77,39 @@ Currently, the package can be installed through this Github repository. Note tha
 
 ```bash
 pip install git+https://github.com/MassimoStel/TEA_Networks.git
+python -m spacy download en_core_web_trf
 ```
 
 ### Prerequisites
 
-- Python >=3.7,<3.10
+- Python >=3.9 and **<=3.12** (Python 3.13/3.14 are not supported yet: the spaCy 3.8 stack — `spacy-transformers`, `spacy-alignments`, `en_core_web_trf` — has no prebuilt wheels for them, so installation would require building from source with a Rust compiler)
 - pip package manager
+
+### Local development setup (cloned repository)
+
+If you cloned this repository (e.g. to run the notebooks in `Docs & Guides/` or to modify the library), installing `requirements.txt` is not enough: that only installs the **dependencies**. You also need to install the `teanets` package itself, in editable mode:
+
+```bash
+# with uv (https://docs.astral.sh/uv/)
+uv venv .venv --python 3.12
+source .venv/bin/activate
+uv pip install -r requirements.txt
+uv pip install -e . --no-deps
+
+# or with plain pip
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e . --no-deps
+```
+
+Without the `pip install -e .` step, `import teanets` raises `ModuleNotFoundError` whenever Python is not launched from the repository root (which is exactly what happens inside the `Docs & Guides/` notebooks).
+
+**Jupyter users**: make sure the notebook kernel uses the virtual environment's Python (`.venv/bin/python`), not the system one. In VS Code: "Select Kernel" → Python Environments → `.venv`. With classic Jupyter you can register the kernel with:
+
+```bash
+python -m ipykernel install --user --name teanets --display-name "Python 3.12 (teanets)"
+```
 
 ---
 ## Usage and guides
@@ -129,7 +156,7 @@ display(svo)
 |:---|:---|:---|:---|:---|---:|---:|---:|---:|
 | system | Agent | detect | Event | [[('system', [])], ['detect'], [('error', [])]... | 0 | 0 | 0 | 0 |
 | detect | Event | error | Target | [[('system', [])], ['detect'], [('error', [])]... | 0 | 0 | 0 | 0 |
-| loaf | Agent | finally sell | Event | [[('loaf', [])], ['finally sell'], [], True, T... | 0 | 1 | 1 | 1 |
+| loaf | Agent | finally sell | Event | [[('loaf', [])], ['finally sell'], []] | 0 | 1 | 1 | 1 |
 | mayor | Agent | praise | Event | [[('mayor', [])], ['praise'], [('volunteer', [... | 0 | 2 | 0 | 0 |
 | praise | Event | volunteer | Target | [[('mayor', [])], ['praise'], [('volunteer', [... | 0 | 2 | 0 | 0 |
 | mayor | Agent | thank | Event | [[('mayor', [])], ['thank'], [('community', []... | 0 | 3 | 0 | 0 |

@@ -1,36 +1,43 @@
-import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
-from itertools import combinations, chain
-from nltk.corpus import wordnet as wn
+from matplotlib.patches import FancyArrowPatch
+
 from teanets.nlp_utils import compute_valence
-from teanets.analytics import add_node_with_type, svo_to_graph
+from teanets.analytics import svo_to_graph
 
 
-def plot_svo_graph(df, subject_filter=None, object_filter=None, custom_font=14, filename=None, mark_passive_approx=False):
+def plot_svo_graph(df, subject_filter=None, object_filter=None, custom_font=14, filename=None, mark_passive_approx=False, seed=None, show=True):
     """
     Plot a graph of SVO data.
 
     Args:
         df (dataframe): a pandas DataFrame of SVO data.
         subject_filter (str): A subject to filter the graph by.
+        object_filter (str): An object to filter the graph by.
+        custom_font (int): Font size for node labels.
+        filename (str): If set, save the figure to this path.
         mark_passive_approx (bool): If True, edges that originate exclusively
             from passive constructions without an explicit agent
             (``passive_approx == 1``) are drawn with a dashed style and
             reduced alpha to visually distinguish "victim-in-Agent"
             approximations from genuine perpetrator edges.
             Default ``False`` preserves the legacy rendering.
+        seed (int): Seed for the (random) node layout. Set it to obtain
+            reproducible figures.
+        show (bool): If True (default), display the figure; if False, close
+            it after the optional save (useful in batch/headless runs).
     """
     G = svo_to_graph(df, subject_filter=subject_filter, object_filter=object_filter)
-    plot_graph(G, custom_font, filename, mark_passive_approx=mark_passive_approx)
+    plot_graph(G, custom_font, filename, mark_passive_approx=mark_passive_approx, seed=seed, show=show)
 
 
-def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import FancyArrowPatch
-
+def plot_graph(G, custom_font, filename=None, mark_passive_approx=False, seed=None, show=True):
     num_nodes = G.number_of_nodes()
+    if num_nodes == 0:
+        print("plot_graph: the graph is empty, nothing to plot.")
+        return
+
+    rng = np.random.default_rng(seed)
     # Scale figure size based on number of nodes
     figsize = (
         max(12, 8 + (num_nodes**0.7) * 1.4),
@@ -86,14 +93,14 @@ def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
     def get_available_position(
         base_x, base_y, existing_positions, x_range=0.45, tolerance=0.85
     ):
-        x = base_x + np.random.uniform(-x_range, x_range)
+        x = base_x + rng.uniform(-x_range, x_range)
         y = base_y
         attempts = 0
         while attempts < 50 and any(
             abs(ex_y - y) < tolerance and abs(ex_x - x) < tolerance
             for ex_x, ex_y in existing_positions.values()
         ):
-            x = base_x + np.random.uniform(-x_range, x_range)
+            x = base_x + rng.uniform(-x_range, x_range)
             y += spacing * 0.3  # Increased from 0.25 for more vertical spacing
             attempts += 1
         return x, y
@@ -107,12 +114,12 @@ def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
         )  # Increased multiplier for more space between subgraphs
 
         # Add some random variation to prevent perfect alignment
-        base_y = sentence_base_y + np.random.uniform(-0.2, 0.2)
+        base_y = sentence_base_y + rng.uniform(-0.2, 0.2)
 
         # Position subjects with more vertical spread
         for s in s_nodes:
             x, y = get_available_position(
-                -2, base_y + np.random.uniform(-0.4, 0.4), pos
+                -2, base_y + rng.uniform(-0.4, 0.4), pos
             )  # Increased range
             pos[s] = (x, y)
 
@@ -124,7 +131,7 @@ def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
         # Position objects with more vertical spread
         for o in o_nodes:
             x, y = get_available_position(
-                2, base_y + np.random.uniform(-0.4, 0.4), pos
+                2, base_y + rng.uniform(-0.4, 0.4), pos
             )  # Increased range
             pos[o] = (x, y)
 
@@ -132,11 +139,11 @@ def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
     remaining_nodes = set(G.nodes()) - set(pos.keys())
     for node in remaining_nodes:
         if node in subjects:
-            base_x, base_y = -2, sentence_base_y + np.random.uniform(-spacing, spacing)
+            base_x, base_y = -2, sentence_base_y + rng.uniform(-spacing, spacing)
         elif node in verbs:
-            base_x, base_y = 0, sentence_base_y + np.random.uniform(-spacing, spacing)
+            base_x, base_y = 0, sentence_base_y + rng.uniform(-spacing, spacing)
         else:
-            base_x, base_y = 2, sentence_base_y + np.random.uniform(-spacing, spacing)
+            base_x, base_y = 2, sentence_base_y + rng.uniform(-spacing, spacing)
         x, y = get_available_position(base_x, base_y, pos)
         pos[node] = (x, y)
 
@@ -210,7 +217,7 @@ def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
             if min_weight == max_weight:
                 linewidth = 4  # Default linewidth if all weights are the same
             else:
-                # Map weight to linewidth between 1 and 3
+                # Map weight to linewidth between 4.5 and 6.5
                 linewidth = 4.5 + 2 * (weight - min_weight) / (max_weight - min_weight)
 
             # Determine edge color based on valence
@@ -266,7 +273,7 @@ def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
             if min_weight == max_weight:
                 linewidth = 4  # Default linewidth if all weights are the same
             else:
-                # Map weight to linewidth between 1 and 3
+                # Map weight to linewidth between 4.5 and 6.5
                 linewidth = 4.5 + 2 * (weight - min_weight) / (max_weight - min_weight)
 
             # Determine edge color based on valence
@@ -376,4 +383,7 @@ def plot_graph(G, custom_font, filename=None, mark_passive_approx=False):
     plt.tight_layout()
     if filename:
         plt.savefig(filename, bbox_inches='tight', dpi=300)
-    plt.show()
+    if show:
+        plt.show()
+    else:
+        plt.close()

@@ -1,15 +1,18 @@
-spacy
+# Core runtime dependencies.
+# spaCy is pinned to the 3.8 series to stay compatible with the
+# en_core_web_trf 3.8.0 model below.
+spacy>=3.8,<3.9
 networkx
 matplotlib
 numpy
 spacy_transformers
 nltk
 stanza
-fastcoref
+fastcoref>=2.1.6
 vaderSentiment
 pandas
-en_core_web_trf  @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl
 tqdm
+en_core_web_trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl
+cupy-cuda12x
 seaborn
 ipykernel
-cupy-cuda12x

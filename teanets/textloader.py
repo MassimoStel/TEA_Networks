@@ -3,12 +3,63 @@ from .nlp_utils import get_stanza_nlp, get_spacy_nlp
 from teanets.resources import _COREFERENCE_NOUNS
 
 
-# Module-level singleton for the fastcoref model. Loading the model is
-# expensive (downloads weights, allocates GPU memory), so we keep one
-# instance per process. ``teanets.batch_extract`` keeps its own GPU-aware
-# singleton; the one here is the CPU singleton used by the interactive
-# ``extract_svos_from_text`` path.
-_FASTCOREF_MODEL = None
+# Module-level singletons for the fastcoref model, keyed by device.
+# Loading the model is expensive (downloads weights, allocates GPU memory),
+# so we keep one instance per process and device. Both the interactive
+# ``extract_svos_from_text`` path and ``teanets.batch_extract`` share this
+# loader.
+_FASTCOREF_MODELS = {}
+
+# Possessive pronouns need special treatment during coreference replacement:
+# substituting "my" with a plain mention ("John") would produce ungrammatical
+# text ("John brother"); the genitive form ("John's brother") is used instead.
+_POSSESSIVE_PRONOUNS = {
+    "my", "your", "his", "her", "its", "our", "their",
+}
+
+
+def load_fastcoref_model(device="cpu"):
+    """
+    Load (once per process and device) and return the fastcoref model.
+
+    The model is patched to force the ``eager`` attention implementation,
+    which avoids incompatibilities between fastcoref and recent versions of
+    ``transformers``. NOTE: the patch temporarily monkeypatches
+    ``AutoModel.from_config`` and is therefore not thread-safe; load the
+    model from the main thread before spawning workers.
+    """
+    global _FASTCOREF_MODELS
+    if device in _FASTCOREF_MODELS:
+        return _FASTCOREF_MODELS[device]
+
+    import functools
+    import logging
+
+    from fastcoref import FCoref as OriginalFCoref
+    from transformers import AutoModel
+
+    # Suppress transformers/fastcoref logging
+    logging.getLogger("transformers").setLevel(logging.ERROR)
+    logging.getLogger("fastcoref").setLevel(logging.ERROR)
+
+    class PatchedFCoref(OriginalFCoref):
+        def __init__(self, *args, **kwargs):
+            original_from_config = AutoModel.from_config
+
+            def patched_from_config(config, *a, **kw):
+                kw["attn_implementation"] = "eager"
+                return original_from_config(config, *a, **kw)
+
+            try:
+                AutoModel.from_config = functools.partial(
+                    patched_from_config, attn_implementation="eager"
+                )
+                super().__init__(*args, **kwargs)
+            finally:
+                AutoModel.from_config = original_from_config
+
+    _FASTCOREF_MODELS[device] = PatchedFCoref(nlp=get_spacy_nlp(), device=device)
+    return _FASTCOREF_MODELS[device]
 
 
 def text_preparation(text, clean=True, coref_solver="fastcoref"):
@@ -26,7 +77,7 @@ def text_preparation(text, clean=True, coref_solver="fastcoref"):
     # Clean the text
     cleaned_text = clean_text(text)
 
-    if coref_solver == None:
+    if coref_solver is None:
         return cleaned_text
 
     # Solve coreferences
@@ -83,121 +134,116 @@ def solve_coreferences(text, coref_solver="fastcoref"):
     return output_text
 
 
-def fastcoref_solve_coreferences(text_to_resolve):
+def _apply_replacements(text, replacements):
     """
-    Replaces coreferent mentions with their representative texts in the text reconstructed from the doc.
-
-    The fastcoref model is loaded **once** per process (module-level
-    singleton ``_FASTCOREF_MODEL``) so repeated calls are cheap. For
-    large-batch processing prefer
-    ``teanets.batch_extract.batch_coref_resolve()`` which performs a
-    single forward pass on a list of texts and supports GPU.
-
-    Args:
-        text.
-
-    Returns:
-        str: The text with coreferences resolved.
+    Apply a list of ``{"start", "end", "replacement"}`` span replacements
+    to *text*. Replacements are applied from the end of the string backwards
+    (so earlier offsets stay valid) and overlapping spans are skipped.
     """
-    global _FASTCOREF_MODEL
+    replacements = sorted(replacements, key=lambda x: x["start"], reverse=True)
+    last_applied_start = len(text) + 1
+    resolved = text
+    for repl in replacements:
+        if repl["end"] > last_applied_start:
+            # Overlaps a replacement already applied: skip to avoid
+            # corrupting character offsets.
+            continue
+        resolved = (
+            resolved[: repl["start"]] + repl["replacement"] + resolved[repl["end"] :]
+        )
+        last_applied_start = repl["start"]
+    return resolved
 
-    from fastcoref import FCoref as OriginalFCoref
-    from transformers import AutoModel
-    import logging
 
-    import functools
-    import re
+def resolve_coref_prediction(pred_result, original_text):
+    """
+    Apply coreference replacements from a single fastcoref prediction result
+    to *original_text* and return the resolved text.
 
-    # Suppress transformers/fastcoref logging
-    logging.getLogger("transformers").setLevel(logging.ERROR)
-    logging.getLogger("fastcoref").setLevel(logging.ERROR)
+    Mentions containing words in ``_COREFERENCE_NOUNS`` are replaced with the
+    earliest mention of the cluster that contains none of those words. When
+    the mention being replaced is a bare possessive pronoun (e.g. "my"), the
+    replacement is turned into a genitive ("John" -> "John's") to keep the
+    resolved text grammatical.
+    """
+    clusters_positions = pred_result.get_clusters(as_strings=False)
+    clusters_strings = pred_result.get_clusters()
 
-    if _FASTCOREF_MODEL is None:
-        class PatchedFCoref(OriginalFCoref):
-            def __init__(self, *args, **kwargs):
-                original_from_config = AutoModel.from_config
-
-                def patched_from_config(config, *args, **kwargs):
-                    kwargs["attn_implementation"] = "eager"
-                    return original_from_config(config, *args, **kwargs)
-
-                try:
-                    AutoModel.from_config = functools.partial(
-                        patched_from_config, attn_implementation="eager"
-                    )
-                    super().__init__(*args, **kwargs)
-                finally:
-                    AutoModel.from_config = original_from_config
-
-        _FASTCOREF_MODEL = PatchedFCoref(nlp=get_spacy_nlp(), device="cpu")
-
-    model = _FASTCOREF_MODEL
-
-    preds = model.predict(texts=text_to_resolve)
-
-    clusters_positions = preds.get_clusters(as_strings=False)
-    clusters_strings = preds.get_clusters()
-    text_to_resolve = text_to_resolve
-
-    # Build a list of replacements
-    replacements = []  # Each item: (start_pos, end_pos, replacement_text)
-
+    replacements = []
     for cluster_idx, cluster in enumerate(clusters_positions):
         mentions_positions = cluster  # List of (start_char, end_char)
-        mentions_texts = clusters_strings[
-            cluster_idx
-        ]  # Corresponding list of mention texts
+        mentions_texts = clusters_strings[cluster_idx]
 
-        # Build a list of mentions with their positions and texts
         mentions = []
         for pos, text_mention in zip(mentions_positions, mentions_texts):
             start, end = pos
-            mention_text = text_mention
-            mentions.append({"start": start, "end": end, "text": mention_text})
+            mentions.append({"start": start, "end": end, "text": text_mention})
 
         # Identify mentions containing words in _COREFERENCE_NOUNS
-        mentions_with_coref_nouns = []
-        for mention in mentions:
-            words_in_mention = re.findall(r"\b\w+\b", mention["text"].lower())
-            if any(word in _COREFERENCE_NOUNS for word in words_in_mention):
-                mentions_with_coref_nouns.append(mention)
+        mentions_with_coref_nouns = [
+            m
+            for m in mentions
+            if any(
+                word in _COREFERENCE_NOUNS
+                for word in re.findall(r"\b\w+\b", m["text"].lower())
+            )
+        ]
 
         if mentions_with_coref_nouns:
-            # Find a replacement mention that does not contain any word in _COREFERENCE_NOUNS
-            replacement_mentions = []
-            for m in mentions:
-                words_in_mention = re.findall(r"\b\w+\b", m["text"].lower())
-                if not any(word in _COREFERENCE_NOUNS for word in words_in_mention):
-                    replacement_mentions.append(m)
+            # Find a replacement mention that does not contain any word in
+            # _COREFERENCE_NOUNS
+            replacement_mentions = [
+                m
+                for m in mentions
+                if not any(
+                    word in _COREFERENCE_NOUNS
+                    for word in re.findall(r"\b\w+\b", m["text"].lower())
+                )
+            ]
             if not replacement_mentions:
                 # If no replacement mention is available, skip this cluster
                 continue
             # Prefer the earliest mention in the text
             replacement_mentions.sort(key=lambda m: (m["start"], -len(m["text"])))
             replacement_text = replacement_mentions[0]["text"]
-            # For each mention with _COREFERENCE_NOUNS, record the replacement
             for mention in mentions_with_coref_nouns:
+                replacement = replacement_text
+                if mention["text"].strip().lower() in _POSSESSIVE_PRONOUNS:
+                    replacement = replacement_text + "'s"
                 replacements.append(
                     {
                         "start": mention["start"],
                         "end": mention["end"],
-                        "replacement": replacement_text,
+                        "replacement": replacement,
                     }
                 )
 
-    # Sort replacements in reverse order of start positions
-    replacements.sort(key=lambda x: x["start"], reverse=True)
+    return _apply_replacements(original_text, replacements)
 
-    # Apply replacements to the text
-    for repl in replacements:
-        start = repl["start"]
-        end = repl["end"]
-        replacement_text = repl["replacement"]
-        text_to_resolve = (
-            text_to_resolve[:start] + replacement_text + text_to_resolve[end:]
-        )
 
-    return text_to_resolve
+def fastcoref_solve_coreferences(text_to_resolve):
+    """
+    Replaces coreferent mentions with their representative texts.
+
+    The fastcoref model is loaded **once** per process (see
+    ``load_fastcoref_model``) so repeated calls are cheap. For large-batch
+    processing prefer ``teanets.batch_extract.batch_coref_resolve()`` which
+    performs a single forward pass on a list of texts and supports GPU.
+
+    Args:
+        text_to_resolve (str): The input text.
+
+    Returns:
+        str: The text with coreferences resolved.
+    """
+    model = load_fastcoref_model(device="cpu")
+
+    # fastcoref expects a list of texts; depending on the version, predict()
+    # may return a single CorefResult or a list of them.
+    preds = model.predict(texts=[text_to_resolve])
+    pred = preds[0] if isinstance(preds, list) else preds
+
+    return resolve_coref_prediction(pred, text_to_resolve)
 
 
 def stanza_solve_coreferences(doc):
@@ -270,12 +316,15 @@ def stanza_solve_coreferences(doc):
                 # Word is not part of any coreference chain; nothing to do
                 pass
 
-    # Sort replacements in reverse order to prevent index shifting
-    replacements.sort(key=lambda x: x[0], reverse=True)
-
-    # Apply replacements to the original text
-    resolved_text = original_text
+    # Possessive pronouns are replaced with the genitive form of the
+    # representative text ("my" -> "John's") to keep the text grammatical.
+    replacement_dicts = []
     for start_char, end_char, rep_text in replacements:
-        resolved_text = resolved_text[:start_char] + rep_text + resolved_text[end_char:]
+        span_text = original_text[start_char:end_char].strip().lower()
+        if span_text in _POSSESSIVE_PRONOUNS:
+            rep_text = rep_text + "'s"
+        replacement_dicts.append(
+            {"start": start_char, "end": end_char, "replacement": rep_text}
+        )
 
-    return resolved_text
+    return _apply_replacements(original_text, replacement_dicts)

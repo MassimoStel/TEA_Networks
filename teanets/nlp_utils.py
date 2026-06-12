@@ -1,6 +1,5 @@
 import spacy
 import warnings
-from teanets.resources import _valences
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 
@@ -29,7 +28,14 @@ def spacynlp(text):
     return nlp(text)
 
 
+_wordnet_checked = False
+
+
 def ensure_wordnet_downloaded():
+    """Download the WordNet corpus on first use (no-op afterwards)."""
+    global _wordnet_checked
+    if _wordnet_checked:
+        return
     import nltk
     from nltk.data import find
 
@@ -37,12 +43,12 @@ def ensure_wordnet_downloaded():
         find("corpora/wordnet")
     except LookupError:
         nltk.download("wordnet")
+    _wordnet_checked = True
 
 
 def get_spacy_nlp():
     global _nlp_spacy
     if _nlp_spacy is None:
-        ensure_wordnet_downloaded()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             _nlp_spacy = spacy.load("en_core_web_trf")

@@ -1,11 +1,21 @@
 
 def _valences(language="english"):
+    """
+    Return the (positive, negative, ambivalent) word lists for *language*.
 
+    NOTE: these lexicons are currently not used by the pipeline (node valence
+    is computed with VADER, see ``nlp_utils.compute_valence``). They are kept
+    available for custom analyses.
+    """
     if language == "english":
         from teanets.valence.english import _positive, _negative, _ambivalent
-
     elif language == "italian":
         from teanets.valence.italian import _positive, _negative, _ambivalent
+    else:
+        raise ValueError(
+            f"Unsupported language: {language!r}. "
+            "Supported languages are 'english' and 'italian'."
+        )
 
     return _positive, _negative, _ambivalent
 

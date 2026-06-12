@@ -1,3 +1,5 @@
+import re
+
 import networkx as nx
 from .nlp_utils import compute_valence
 from collections import defaultdict
@@ -112,6 +114,32 @@ def merge_svo_dataframes(df_list):
     return merged_df
 
 
+def drop_approximated_svos(df):
+    """
+    Remove ALL rows belonging to SVO triples flagged as approximated passives
+    (``passive_approx`` = 1 on their Agent-Event/Agent-Agent rows).
+
+    Filtering row-by-row (``df[df["passive_approx"] == 0]``) is NOT enough:
+    the Event-Target and Target-Target rows of an approximated triple always
+    carry ``passive_approx`` = 0, so they would survive the filter. This
+    helper drops the whole triple via its ``svo_id``.
+
+    Args:
+        df (pd.DataFrame): An SVO DataFrame produced by ``extract_svos``.
+
+    Returns:
+        pd.DataFrame: The DataFrame without any row of approximated triples.
+    """
+    if "passive_approx" not in df.columns:
+        return df
+
+    flags = pd.to_numeric(df["passive_approx"], errors="coerce").fillna(0).astype(int)
+    approx_ids = set(df.loc[flags == 1, "svo_id"].unique())
+    # Semantic rows have svo_id == "N/A" and no voice information: keep them.
+    approx_ids.discard("N/A")
+    return df[~df["svo_id"].isin(approx_ids)]
+
+
 def export_hypergraphs(df):
     """
     Extracts hypergraphs from the DataFrame where Semantic-Syntactic is 0,
@@ -147,7 +175,7 @@ def export_subj(df):
     Extracts a set of all unique subjects from the DataFrame.
     Each element in the set is a tuple of (subject, valence).
     """
-    # Filter rows where TEA is 'Target' (indicative of subjects)
+    # Filter rows where TEA is 'Agent' (subjects sit in 'Node 1')
     df_subjects = df[df["TEA"] == "Agent"]
     # Get unique subjects from 'Node 1'
     subjects = df_subjects["Node 1"].unique()
@@ -164,7 +192,7 @@ def export_obj(df):
     Extracts a set of all unique objects from the DataFrame.
     Each element in the set is a tuple of (object, valence).
     """
-    # Filter rows where TEA2 is 'Agent' (indicative of objects)
+    # Filter rows where TEA2 is 'Target' (objects sit in 'Node 2')
     df_objects = df[df["TEA2"] == "Target"]
     # Get unique objects from 'Node 2'
     objects = df_objects["Node 2"].unique()
@@ -208,22 +236,33 @@ def add_node_with_type(G, node_id, label, node_type):
         G.add_node(node_id, type=set([node_type]), label=label)
 
 
+def _term_pattern(term):
+    """
+    Build a safe, whole-word, case-insensitive regex pattern for *term*.
+    Escaping prevents regex injection (e.g. terms containing '(' or '$');
+    word boundaries prevent substring false positives (e.g. 'he' matching
+    'the teacher').
+    """
+    return rf"\b{re.escape(term)}\b"
+
+
 def filter_subjects(df, subject_term):
     """
-    Filters the DataFrame to keep rows where the 'svo_id' corresponds to entries
-    where 'Node 1' contains the subject term and 'TEA' indicates a subject ('Target').
+    Filters the DataFrame to keep rows whose 'svo_id' corresponds to entries
+    where 'Node 1' contains the subject term as a whole word and 'TEA' is
+    'Agent'.
 
     Parameters:
     - df: The input DataFrame.
-    - subject_term: The term to search for in subjects.
+    - subject_term: The term to search for in subjects (matched case-insensitively, whole word).
 
     Returns:
     - A filtered DataFrame containing only rows with matching 'svo_id's.
     """
-    # Identify 'svo_id's where 'Node 1' contains the subject term and 'TEA' is 'Target'
+    # Identify 'svo_id's where 'Node 1' contains the subject term and 'TEA' is 'Agent'
     subject_svo_ids = set(
         df[
-            (df["Node 1"].str.contains(subject_term, case=False, na=False))
+            (df["Node 1"].str.contains(_term_pattern(subject_term), case=False, na=False, regex=True))
             & (df["TEA"] == "Agent")
         ]["svo_id"].unique()
     )
@@ -235,23 +274,29 @@ def filter_subjects(df, subject_term):
 
 def filter_objects(df, object_term):
     """
-    Filters the DataFrame to keep rows where the 'svo_id' corresponds to entries
-    where 'Node 2' contains the object term and 'TEA' indicates an object ('Agent').
+    Filters the DataFrame to keep rows whose 'svo_id' corresponds to entries
+    where the object term appears as a whole word in a 'Target' node.
+
+    Object nodes live in 'Node 2' of Event-Target rows (TEA2 == 'Target') and
+    in both columns of Target-Target rows (TEA == 'Target').
 
     Parameters:
     - df: The input DataFrame.
-    - subject_term: The term to search for in subjects.
+    - object_term: The term to search for in objects (matched case-insensitively, whole word).
 
     Returns:
     - A filtered DataFrame containing only rows with matching 'svo_id's.
     """
-    # Identify 'svo_id's where 'Node 12' contains the subject term and 'TEA' is 'Agent'
-    object_svo_ids = set(
-        df[
-            (df["Node 2"].str.contains(object_term, case=False, na=False))
-            & (df["TEA"] == "Target")
-        ]["svo_id"].unique()
+    pattern = _term_pattern(object_term)
+    in_node2 = (
+        df["Node 2"].str.contains(pattern, case=False, na=False, regex=True)
+        & (df["TEA2"] == "Target")
     )
+    in_node1 = (
+        df["Node 1"].str.contains(pattern, case=False, na=False, regex=True)
+        & (df["TEA"] == "Target")
+    )
+    object_svo_ids = set(df[in_node2 | in_node1]["svo_id"].unique())
     # Filter the DataFrame to only include rows with these 'svo_id's
     filtered_df = df[df["svo_id"].isin(object_svo_ids)]
     return filtered_df
@@ -410,10 +455,16 @@ def tea_weighted_degree_centrality(
     # Filter the DataFrame to include only subjects, verbs, or objects
     if TEA == "Agent":
         df_filtered = df[df["node"].str.endswith("_s")].copy()
-    elif TEA == "Event" and TEA2 == None:
+    elif TEA == "Event" and TEA2 is None:
         df_filtered = df[df["node"].str.endswith("_v")].copy()
     elif TEA2 == "Target":
         df_filtered = df[df["node"].str.endswith("_o")].copy()
+    else:
+        raise ValueError(
+            f"Unsupported (TEA, TEA2) combination: ({TEA!r}, {TEA2!r}). "
+            "Supported combinations are: ('Agent', ...) for subjects, "
+            "('Event', None) for verbs, (..., 'Target') for objects."
+        )
     # Remove the last character(s) from the node names
     df_filtered["node"] = df_filtered["node"].str.replace("(_s|_v|_o)$", "", regex=True)
 
@@ -427,7 +478,16 @@ def tea_weighted_degree_centrality(
 def tea_degree_centrality_overview(df):
     """
     Compute the degree centrality for each of the SVO components (Subject, Verb, Object) using the weighted degree centrality measure.
+
+    Returns:
+    dict[str, pd.DataFrame]: The full centrality DataFrames, keyed by
+    "Subject", "Verb", and "Object" (the top 20 rows of each are also
+    printed/displayed).
     """
+    try:
+        from IPython.display import display as _display
+    except ImportError:
+        _display = print
 
     combinations = [
         ["Subject", "Agent", "Event"],
@@ -435,8 +495,12 @@ def tea_degree_centrality_overview(df):
         ["Object", "Event", "Target"],
     ]
 
+    results = {}
     for svo, TEA, TEA2 in combinations:
-
+        centrality_df = tea_weighted_degree_centrality(df, TEA, TEA2)
+        results[svo] = centrality_df
         print(f"Degree centrality for {svo}")
-        display(tea_weighted_degree_centrality(df, TEA, TEA2).head(20))
+        _display(centrality_df.head(20))
         print("############################################ \n")
+
+    return results

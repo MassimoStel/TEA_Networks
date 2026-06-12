@@ -1,9 +1,9 @@
+from functools import lru_cache
+
 from teanets.textloader import text_preparation
-from teanets.teaplot import *
-from teanets.resources import _VAGUE_ADVMODS, _VAGUE_AUX, _VAGUE_ADJ
-import spacy
-from .nlp_utils import spacynlp, compute_valence
-from itertools import combinations, chain
+from teanets.resources import _VAGUE_ADVMODS, _VAGUE_AUX
+from .nlp_utils import spacynlp, compute_valence, ensure_wordnet_downloaded
+from itertools import combinations
 from nltk.corpus import wordnet as wn
 import pandas as pd
 
@@ -15,13 +15,23 @@ _NONPASSIVE_AUX_LEMMAS = {
 }
 
 
-def extract_svos_from_text(text, coref_solver="fastcoref"):
+def extract_svos_from_text(text, coref_solver="fastcoref", semantic_relations=True):
     """
     Extract Subject-Verb-Object (SVO) triples from a given text.
+
+    Parameters
+    ----------
+    text : str
+        The input text.
+    coref_solver : str or None
+        Coreference solver to use ('fastcoref', 'stanza', or None to skip).
+    semantic_relations : bool
+        If True (default), also add WordNet-synonymy edges between nodes of
+        the same role. Set to False to speed up large batch jobs.
     """
     prepared_text = text_preparation(text, coref_solver=coref_solver)
     doc = spacynlp(prepared_text)
-    svos = extract_svos(doc)
+    svos = extract_svos(doc, semantic_relations=semantic_relations)
     return svos
 
 
@@ -30,10 +40,12 @@ def extract_svos_from_text(text, coref_solver="fastcoref"):
 ################################################################################################
 
 
+@lru_cache(maxsize=8192)
 def get_synsets(phrase):
     """
     Get noun synsets for the phrase as a whole.
     """
+    ensure_wordnet_downloaded()
     # Attempt to get synsets for the whole phrase as a noun
     synsets = wn.synsets(phrase.replace(" ", "_"), pos="n")
     if synsets:
@@ -48,6 +60,13 @@ def get_synsets(phrase):
         return synsets
 
 
+@lru_cache(maxsize=8192)
+def _has_noun_synsets(word):
+    ensure_wordnet_downloaded()
+    return bool(wn.synsets(word, pos="n"))
+
+
+@lru_cache(maxsize=8192)
 def are_synonymous(word1, word2):
     """
     Check if two words or phrases are synonyms considering only nouns.
@@ -59,7 +78,7 @@ def are_synonymous(word1, word2):
         noun_count = 0
         for word in words:
             # Check if the word has noun synsets
-            if wn.synsets(word, pos="n"):
+            if _has_noun_synsets(word):
                 noun_count += 1
         if noun_count >= 2:
             return False
@@ -77,27 +96,57 @@ def are_synonymous(word1, word2):
     return False
 
 
-def extract_svos(doc):
+def _is_verb_candidate(token):
+    """
+    Return True when *token* should be treated as a verb candidate for SVO
+    extraction. This is the single source of truth for the candidate filter,
+    shared by ``extract_svos()`` and ``is_sentence_passive()``.
+    """
+    return (
+        (token.pos_ in ("VERB", "AUX"))
+        and (
+            token.dep_
+            not in ("aux", "auxpass", "amod", "npadvmod", "prep", "xcomp", "csubj")
+        )
+        and not (
+            token.dep_ == "conj"
+            and token.head.dep_
+            in ("aux", "auxpass", "amod", "prep", "xcomp", "csubj")
+        )
+    )
+
+
+def is_sentence_passive(doc):
+    """
+    Return True if at least one verb candidate in the parsed *doc* is flagged
+    as passive by ``_passive_info()``. Uses the same verb-candidate filter as
+    ``extract_svos()``, so sentence-level passive detection is consistent with
+    the extraction pipeline.
+    """
+    return any(
+        _passive_info(token)["is_passive"] for token in doc if _is_verb_candidate(token)
+    )
+
+
+def extract_svos(doc, semantic_relations=True):
     """
     Extract Subject-Verb-Object (SVO) triples from a parsed document.
     Returns a pandas DataFrame with specified columns.
+
+    Parameters
+    ----------
+    doc : spacy.tokens.Doc
+        The parsed document.
+    semantic_relations : bool, optional
+        If True (default), also add WordNet-synonymy edges between nodes of
+        the same role (``Semantic-Syntactic`` = 1). Set to False to skip this
+        O(n^2) step, e.g. in large batch jobs.
     """
     # Collect SVO triples
     svo_triples = []
 
     for possible_verb in doc:
-        if (
-            (possible_verb.pos_ in ("VERB", "AUX"))
-            and (
-                possible_verb.dep_
-                not in ("aux", "auxpass", "amod", "npadvmod", "prep", "xcomp", "csubj")
-            )
-            and not (
-                possible_verb.dep_ == "conj"
-                and possible_verb.head.dep_
-                in ("aux", "auxpass", "amod", "prep", "xcomp", "csubj")
-            )
-        ):
+        if _is_verb_candidate(possible_verb):
 
             subjects = get_verb_subjects(possible_verb)
             objects = get_verb_objects(possible_verb)
@@ -118,7 +167,9 @@ def extract_svos(doc):
     svo_id = 0
     for svo in svo_triples:
         subjects, verbs, objects, passive_approx, is_passive = svo
-        hypergraph = str(svo)
+        # The hypergraph description contains only the three node groups;
+        # the voice flags are already exposed as dedicated columns.
+        hypergraph = str([subjects, verbs, objects])
 
         # For syntactic relations (Semantic-Syntactic = 0)
         # Create Subject-Verb relations
@@ -195,46 +246,47 @@ def extract_svos(doc):
         svo_id += 1
 
     # Now, process for semantic relations (Semantic-Syntactic = 1)
-    # Collect all subjects and objects across all SVOs
-    all_subjects = [subj for svo in svo_triples for subj, _ in svo[0]]
-    all_objects = [obj for svo in svo_triples for obj, _ in svo[2]]
+    if semantic_relations:
+        # Collect all subjects and objects across all SVOs
+        all_subjects = [subj for svo in svo_triples for subj, _ in svo[0]]
+        all_objects = [obj for svo in svo_triples for obj, _ in svo[2]]
 
-    # Remove duplicates
-    subject_nodes = list(set(all_subjects))
-    object_nodes = list(set(all_objects))
+        # Remove duplicates
+        subject_nodes = list(set(all_subjects))
+        object_nodes = list(set(all_objects))
 
-    # For each pair of subjects, check if they are synonyms
-    subject_pairs = combinations(subject_nodes, 2)
-    for subj1, subj2 in subject_pairs:
-        if are_synonymous(subj1, subj2):
-            # Add semantic relation
-            data_rows.append(
-                {
-                    "Node 1": subj1,
-                    "TEA": "Agent",
-                    "Node 2": subj2,
-                    "TEA2": "Agent",
-                    "Hypergraph": "N/A",
-                    "Semantic-Syntactic": 1,
-                    "svo_id": "N/A",
-                }
-            )
+        # For each pair of subjects, check if they are synonyms
+        subject_pairs = combinations(subject_nodes, 2)
+        for subj1, subj2 in subject_pairs:
+            if are_synonymous(subj1, subj2):
+                # Add semantic relation
+                data_rows.append(
+                    {
+                        "Node 1": subj1,
+                        "TEA": "Agent",
+                        "Node 2": subj2,
+                        "TEA2": "Agent",
+                        "Hypergraph": "N/A",
+                        "Semantic-Syntactic": 1,
+                        "svo_id": "N/A",
+                    }
+                )
 
-    # Similarly for objects
-    object_pairs = combinations(object_nodes, 2)
-    for obj1, obj2 in object_pairs:
-        if are_synonymous(obj1, obj2):
-            data_rows.append(
-                {
-                    "Node 1": obj1,
-                    "TEA": "Target",
-                    "Node 2": obj2,
-                    "TEA2": "Target",
-                    "Hypergraph": "N/A",
-                    "Semantic-Syntactic": 1,
-                    "svo_id": "N/A",
-                }
-            )
+        # Similarly for objects
+        object_pairs = combinations(object_nodes, 2)
+        for obj1, obj2 in object_pairs:
+            if are_synonymous(obj1, obj2):
+                data_rows.append(
+                    {
+                        "Node 1": obj1,
+                        "TEA": "Target",
+                        "Node 2": obj2,
+                        "TEA2": "Target",
+                        "Hypergraph": "N/A",
+                        "Semantic-Syntactic": 1,
+                        "svo_id": "N/A",
+                    }
+                )
 
     # Semantic rows (Semantic-Syntactic=1) have no passive_approx concept
     for row in data_rows:
@@ -331,11 +383,12 @@ def get_verb_phrase(verb):
 
     for child in verb.children:
         if child.dep_ in {"xcomp"}:
-            # Include the xcomp verb lemma directly
-            parts.append(child.lemma_)
-            # Optionally include auxiliaries and modifiers of the xcomp verb
-            child_verb_phrase = get_verb_phrase(child)
-            parts.extend(child_verb_phrase[1:])
+            # Include the full xcomp verb phrase (auxiliaries, negations and
+            # modifiers of the xcomp verb included), so that e.g.
+            # "did not seem to care" is captured as a unit.
+            child_verb_phrase = get_verb_phrase(child)[0]
+            if child_verb_phrase:
+                parts.append(child_verb_phrase)
 
     return [" ".join(parts)]
 
@@ -585,9 +638,17 @@ def get_verb_subjects(verb):
         # Check if the verb is in imperative mood
         if verb.morph.get("Mood") == ["Imp"] or verb.tag_ == "VB":
             subjects.append(("you", []))
-    # Remove duplicates while preserving order
 
-    return subjects
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_subjects = []
+    for subj in subjects:
+        key = (subj[0], tuple(subj[1]))
+        if key not in seen:
+            seen.add(key)
+            unique_subjects.append(subj)
+
+    return unique_subjects
 
 
 def extract_subjects(subject_token):

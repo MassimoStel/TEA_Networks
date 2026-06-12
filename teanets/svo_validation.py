@@ -63,6 +63,30 @@ def extract_svo_dep(doc):
     return subj, verb, obj
 
 
+# Accepted gold-column schemas, in order of preference. The repository's
+# gold standard (data/gold_standard_svo.csv) uses the TEA naming
+# (agent/event/target); the legacy subject/verb/object naming is still
+# supported for external CSVs.
+_GOLD_SCHEMAS = [
+    {"subject": "agent", "verb": "event", "object": "target"},
+    {"subject": "subject", "verb": "verb", "object": "object"},
+]
+
+
+def _resolve_gold_columns(df_gold):
+    """Return the {role: column-name} mapping matching *df_gold*'s columns."""
+    columns = {c.lower() for c in df_gold.columns}
+    for schema in _GOLD_SCHEMAS:
+        if set(schema.values()) <= columns:
+            # Map back to the actual (possibly capitalised) column names
+            lookup = {c.lower(): c for c in df_gold.columns}
+            return {role: lookup[col] for role, col in schema.items()}
+    raise ValueError(
+        "Gold CSV must contain either the columns agent/event/target "
+        f"or subject/verb/object. Found: {list(df_gold.columns)}"
+    )
+
+
 def validate_svo(gold_csv_path, nlp=None):
     """
     Validate dep-parsing SVO extraction against a gold standard CSV.
@@ -70,8 +94,11 @@ def validate_svo(gold_csv_path, nlp=None):
     Parameters
     ----------
     gold_csv_path : str
-        Path to a CSV with columns: sentence, subject, verb, object.
-        An optional ``passive_approx`` column is ignored by this function.
+        Path to a CSV with a ``sentence`` column plus the gold roles, named
+        either ``agent``/``event``/``target`` (TEA convention, as in
+        ``data/gold_standard_svo.csv``) or ``subject``/``verb``/``object``.
+        Optional ``passive_approx``/``is_passive`` columns are ignored by
+        this function.
     nlp : spacy.Language, optional
         A spaCy model. Loaded automatically if not provided.
 
@@ -84,6 +111,7 @@ def validate_svo(gold_csv_path, nlp=None):
         nlp = get_spacy_nlp()
 
     df_gold = pd.read_csv(gold_csv_path)
+    gold_cols = _resolve_gold_columns(df_gold)
     rows = []
     for i, row in df_gold.iterrows():
         s = str(row["sentence"])
@@ -92,9 +120,9 @@ def validate_svo(gold_csv_path, nlp=None):
         subj, verb, obj = extract_svo_dep(nlp(s))
         rows.append({
             "pred_subj": subj, "pred_verb": verb, "pred_obj": obj,
-            "gold_subject": row["subject"],
-            "gold_verb": row["verb"],
-            "gold_object": row["object"],
+            "gold_subject": row[gold_cols["subject"]],
+            "gold_verb": row[gold_cols["verb"]],
+            "gold_object": row[gold_cols["object"]],
         })
 
     df_eval = pd.DataFrame(rows)
@@ -118,7 +146,8 @@ def validate_passive(gold_csv_path, nlp=None, verbose=True):
     Parameters
     ----------
     gold_csv_path : str
-        Path to a CSV with columns: sentence, subject, verb, object, passive_approx, is_passive.
+        Path to a CSV with at least the columns ``sentence`` and
+        ``passive_approx`` (e.g. ``data/gold_standard_svo.csv``).
     nlp : spacy.Language, optional
         A spaCy model. Loaded automatically if not provided.
     verbose : bool
