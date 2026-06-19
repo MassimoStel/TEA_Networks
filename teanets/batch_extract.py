@@ -122,7 +122,12 @@ def process_batch(texts, batch_idx, output_dir, group_name, use_coref, use_gpu):
             continue
 
     if results:
-        batch_df = pd.concat(results, ignore_index=True)
+        # Merge (rather than plain-concat) so svo_id is re-offset to stay
+        # unique across the documents in this batch. A plain concat lets
+        # svo_id collide — every document restarts svo_id at 0 — which
+        # silently breaks any svo_id-keyed operation downstream, e.g. joining
+        # objects back onto Agent->Event edges or drop_approximated_svos().
+        batch_df = analytics.merge_svo_dataframes(results)
         # Use proper dtypes instead of stringifying everything: numeric
         # columns stay numeric (svo_id is nullable because semantic rows
         # carry "N/A"), text columns become strings.

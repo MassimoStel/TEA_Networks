@@ -73,42 +73,56 @@ To ensure accuracy, we validated the extraction logic against a **Gold Standard*
 ---
 ## Installation
 
-Currently, the package can be installed through this Github repository. Note that this requires [Git](https://git-scm.com/) to be installed.
+You can install **from GitHub** (to use the library) or **clone + editable** (to run the notebooks in `Docs & Guides/` or modify the source). Installing from GitHub requires [Git](https://git-scm.com/).
 
 ```bash
-pip install git+https://github.com/MassimoStel/TEA_Networks.git
+pip install --retries 10 --timeout 120 git+https://github.com/MassimoStel/TEA_Networks.git
 python -m spacy download en_core_web_trf
 ```
 
+> **⚠️ Large download (~1.5 GB).** `fastcoref` pulls PyTorch (and, on a GPU machine, the CUDA runtime), so the first install is big. If pip aborts with `Connection broken: IncompleteRead`, just re-run the command — it resumes from pip's cache (the `--retries` / `--timeout` flags above help on flaky links). conda users can run `conda install -c pytorch pytorch` first to shrink the pip step.
+
 ### Prerequisites
 
-- Python >=3.9 and **<=3.12** (Python 3.13/3.14 are not supported yet: the spaCy 3.8 stack — `spacy-transformers`, `spacy-alignments`, `en_core_web_trf` — has no prebuilt wheels for them, so installation would require building from source with a Rust compiler)
-- pip package manager
+- **Python ≥ 3.9 and ≤ 3.12** — use a version you already have in that range; 3.13/3.14 are not supported yet (the spaCy 3.8 stack — `spacy-transformers`, `spacy-alignments`, `en_core_web_trf` — has no prebuilt wheels for them).
+- Any recent **pip (≥ 22)** — no need to upgrade pip.
+
+### Create an isolated environment (recommended)
+
+Pick **one** tool, then run the install commands above inside the activated environment:
+
+```bash
+# venv (standard library) — uses your current Python
+python -m venv .venv
+source .venv/bin/activate            # Windows PowerShell: .venv\Scripts\Activate.ps1
+
+# conda
+conda create -n teanets python=3.12 -y && conda activate teanets
+
+# uv (https://docs.astral.sh/uv/) — install uv first, then create the venv
+pip install uv
+uv venv .venv && source .venv/bin/activate
+```
 
 ### Local development setup (cloned repository)
 
-If you cloned this repository (e.g. to run the notebooks in `Docs & Guides/` or to modify the library), installing `requirements.txt` is not enough: that only installs the **dependencies**. You also need to install the `teanets` package itself, in editable mode:
+To run the notebooks or modify the library, clone the repo and install `teanets` in **editable** mode (installing `requirements.txt` alone only installs the dependencies, not the package itself):
 
 ```bash
-# with uv (https://docs.astral.sh/uv/)
-uv venv .venv --python 3.12
-source .venv/bin/activate
-uv pip install -r requirements.txt
-uv pip install -e . --no-deps
-
-# or with plain pip
-python3.12 -m venv .venv
-source .venv/bin/activate
+git clone https://github.com/MassimoStel/TEA_Networks.git
+cd TEA_Networks
+python -m venv .venv && source .venv/bin/activate   # or uv / conda, see above
 pip install -r requirements.txt
 pip install -e . --no-deps
+python -m spacy download en_core_web_trf
 ```
 
 Without the `pip install -e .` step, `import teanets` raises `ModuleNotFoundError` whenever Python is not launched from the repository root (which is exactly what happens inside the `Docs & Guides/` notebooks).
 
-**Jupyter users**: make sure the notebook kernel uses the virtual environment's Python (`.venv/bin/python`), not the system one. In VS Code: "Select Kernel" → Python Environments → `.venv`. With classic Jupyter you can register the kernel with:
+**Jupyter users**: make sure the notebook kernel uses your environment's Python, not the system one. In VS Code: "Select Kernel" → Python Environments → your env. With classic Jupyter you can register the kernel with:
 
 ```bash
-python -m ipykernel install --user --name teanets --display-name "Python 3.12 (teanets)"
+python -m ipykernel install --user --name teanets --display-name "Python (teanets)"
 ```
 
 ---
