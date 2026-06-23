@@ -307,6 +307,7 @@ def extract_svos(doc, semantic_relations=True):
             "passive_approx",
             "is_passive",
         ],
+        dtype=object,
     )
 
     return df
