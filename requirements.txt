@@ -10,7 +10,7 @@ nltk
 stanza
 fastcoref>=2.1.6
 vaderSentiment
-pandas
+pandas>=2.2,<3.0
 tqdm
 en_core_web_trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl
 cupy-cuda12x
