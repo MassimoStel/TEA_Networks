@@ -132,6 +132,7 @@ teanets-env\Scripts\activate        # Windows
 ```bash
 pip install -r requirements.txt
 pip install -e . --no-deps
+python -c "import nltk; nltk.download('wordnet')"
 ```
 
 > **Why `pip install -e . --no-deps`?** This installs `teanets` in editable mode directly from the local source code, so any changes you make to the library are immediately reflected without reinstalling. Without this step, `import teanets` raises `ModuleNotFoundError` when running notebooks outside the repository root. The `--no-deps` flag skips reinstalling dependencies already covered by `requirements.txt`.
