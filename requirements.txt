@@ -4,15 +4,20 @@
 spacy>=3.8,<3.9
 networkx
 matplotlib
-numpy
+numpy==1.26.4
 spacy_transformers
 nltk
 stanza
 fastcoref>=2.1.6
-vaderSentiment
-pandas>=2.2,<3.0
+vaderSentiment==3.3.2
+pandas==2.2.3
 tqdm
 en_core_web_trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl
-cupy-cuda12x
+cupy-cuda12x==13.0.0
 seaborn
 ipykernel
+pyarrow==14.0.2
+pyarrow-hotfix==0.7
+datasets==2.19.0
+udapi==0.5.2
+udtools==0.2.8
