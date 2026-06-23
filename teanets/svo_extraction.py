@@ -7,6 +7,15 @@ from itertools import combinations
 from nltk.corpus import wordnet as wn
 import pandas as pd
 
+
+# Avoid PyArrow-backed string arrays in pandas 3.x.
+# On some Windows environments, Arrow string construction can crash the kernel
+# with STATUS_ACCESS_VIOLATION instead of raising a Python exception.
+if int(pd.__version__.split(".")[0]) >= 3:
+    pd.options.future.infer_string = False
+    pd.options.mode.string_storage = "python"
+
+
 # Lemmas of modal and copulative auxiliaries that do NOT signal passive even when they appear as dep=aux in front of a VBN.
 
 _NONPASSIVE_AUX_LEMMAS = {
