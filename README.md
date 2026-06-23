@@ -96,6 +96,8 @@ teanets-env\Scripts\activate        # Windows
 ```bash
 pip install git+https://github.com/MassimoStel/TEA_Networks.git
 python -m spacy download en_core_web_trf
+import nltk
+nltk.download('wordnet')
 ```
 
 **Step 3.** Register the environment as a Jupyter kernel (so the notebooks use it):
