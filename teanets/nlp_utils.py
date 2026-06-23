@@ -30,19 +30,24 @@ def spacynlp(text):
 
 _wordnet_checked = False
 
-
 def ensure_wordnet_downloaded():
-    """Download the WordNet corpus on first use (no-op afterwards)."""
+    """Ensure WordNet exists, silently, without repeated noisy downloads."""
     global _wordnet_checked
     if _wordnet_checked:
         return
+
     import nltk
     from nltk.data import find
 
-    try:
-        find("corpora/wordnet")
-    except LookupError:
-        nltk.download("wordnet")
+    for resource in ("corpora/wordnet", "corpora/wordnet.zip"):
+        try:
+            find(resource)
+            _wordnet_checked = True
+            return
+        except LookupError:
+            pass
+
+    nltk.download("wordnet", quiet=True)
     _wordnet_checked = True
 
 
