@@ -21,3 +21,4 @@ pyarrow-hotfix==0.7
 datasets==2.19.0
 udapi==0.5.2
 udtools==0.2.8
+peft
