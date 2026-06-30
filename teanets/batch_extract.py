@@ -99,14 +99,30 @@ def setup_gpu_spacy():
     except Exception:
         return False
 
-
-def process_batch(texts, batch_idx, output_dir, group_name, use_coref, use_gpu):
+# function changed by Navid 6/30
+def process_batch(texts, batch_idx, output_dir, group_name, coref_solver, use_gpu):
     """Process a batch: batch-coref then SVO extraction per text."""
-    # Step 1: batch coreference resolution (1 model call for all texts)
-    if use_coref:
-        resolved_texts = batch_coref_resolve(texts, use_gpu)
-    else:
+    # Step 1: coreference resolution
+    if coref_solver == "none":
         resolved_texts = [clean_text(t) if isinstance(t, str) and t.strip() else "" for t in texts]
+    elif coref_solver == "fastcoref":
+        resolved_texts = batch_coref_resolve(texts, use_gpu)
+    elif coref_solver == "stanza":
+        from .nlp_utils import get_stanza_nlp
+        from .textloader import stanza_solve_coreferences, clean_text
+        stanza_nlp = get_stanza_nlp(use_gpu=use_gpu)
+        resolved_texts = []
+        for t in texts:
+            if isinstance(t, str) and t.strip():
+                try:
+                    doc = stanza_nlp(clean_text(t))
+                    resolved_texts.append(stanza_solve_coreferences(doc))
+                except Exception:
+                    resolved_texts.append(clean_text(t))
+            else:
+                resolved_texts.append("")
+    else:
+        raise ValueError(f"Unsupported coref_solver: {coref_solver}")
 
     # Step 2: SVO extraction per text (spaCy, no heavy model reload)
     results = []
@@ -122,15 +138,7 @@ def process_batch(texts, batch_idx, output_dir, group_name, use_coref, use_gpu):
             continue
 
     if results:
-        # Merge (rather than plain-concat) so svo_id is re-offset to stay
-        # unique across the documents in this batch. A plain concat lets
-        # svo_id collide — every document restarts svo_id at 0 — which
-        # silently breaks any svo_id-keyed operation downstream, e.g. joining
-        # objects back onto Agent->Event edges or drop_approximated_svos().
         batch_df = analytics.merge_svo_dataframes(results)
-        # Use proper dtypes instead of stringifying everything: numeric
-        # columns stay numeric (svo_id is nullable because semantic rows
-        # carry "N/A"), text columns become strings.
         batch_df["svo_id"] = pd.to_numeric(
             batch_df["svo_id"], errors="coerce"
         ).astype("Int64")
@@ -173,7 +181,14 @@ def main(args=None):
     parser.add_argument("--sample-size", type=int, default=500, help="Texts per group (default: 500)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
     parser.add_argument("--resume", action="store_true", help="Resume from existing checkpoints")
-    parser.add_argument("--no-coref", action="store_true", help="Skip coreference resolution (faster)")
+    # parser.add_argument("--no-coref", action="store_true", help="Skip coreference resolution (faster)")
+    # line changed by Navid 6/30
+    parser.add_argument(
+        "--coref-solver",
+        choices=["fastcoref", "stanza", "none"],
+        default="fastcoref",
+        help="Coreference solver: fastcoref (default), stanza, or none (skip)."
+    )
     parser.add_argument("--output-dir", type=str, default="data/svo_output", help="Output directory")
     parser.add_argument("--input", type=str, default="data/sexualassault.csv", help="Input CSV file")
     parser.add_argument("--text-col", type=str, default="text", help="Column name for text (default: text)")
@@ -181,8 +196,9 @@ def main(args=None):
     args = parser.parse_args(args)
 
     use_gpu = args.gpu
-    use_coref = not args.no_coref
-
+    # line changed by Navid 6/30
+    # use_coref = not args.no_coref
+    coref_solver = args.coref_solver
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -242,8 +258,12 @@ def main(args=None):
         setup_gpu_spacy()
 
     # Load coref model once upfront
-    if use_coref:
+    # block changed by Navid 6/30
+    if coref_solver == "fastcoref":
         _load_coref_model(use_gpu)
+    elif coref_solver == "stanza":
+        from .nlp_utils import get_stanza_nlp
+        get_stanza_nlp(use_gpu=use_gpu)
 
     # Warmup spaCy
     print("Warming up spaCy...")
@@ -279,9 +299,10 @@ def main(args=None):
             batch_start = batch_idx * args.batch_size
             batch_end = min(batch_start + args.batch_size, len(texts))
             batch_texts = texts[batch_start:batch_end]
-
+            
+            # line changed by Navid 6/30
             n_svos, n_rows = process_batch(
-                batch_texts, batch_idx, output_dir, group_name, use_coref, use_gpu
+                batch_texts, batch_idx, output_dir, group_name, coref_solver, use_gpu
             )
             total_svos += n_svos
             total_rows += n_rows

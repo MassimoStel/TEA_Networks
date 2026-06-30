@@ -1,4 +1,5 @@
 import re
+import torch
 from .nlp_utils import get_stanza_nlp, get_spacy_nlp
 from teanets.resources import _COREFERENCE_NOUNS
 
@@ -61,29 +62,12 @@ def load_fastcoref_model(device="cpu"):
     _FASTCOREF_MODELS[device] = PatchedFCoref(nlp=get_spacy_nlp(), device=device)
     return _FASTCOREF_MODELS[device]
 
-
-def text_preparation(text, clean=True, coref_solver="fastcoref"):
-    """
-    Prepares the text for further processing by cleaning it and resolving coreferences.
-
-    Parameters:
-    text (str): The input text to prepare.
-    coref_solver (str): The coreference solver to use. Currently supports 'stanza' and 'fastcoref'. If None, coreferences are not resolved.
-
-    Returns:
-    str: The prepared text with coreferences resolved.
-    """
-
-    # Clean the text
-    cleaned_text = clean_text(text)
-
+# block changed by Navid 6/30
+def text_preparation(text, clean=True, coref_solver="fastcoref", use_gpu=False):
+    cleaned_text = clean_text(text) if clean else text
     if coref_solver is None:
         return cleaned_text
-
-    # Solve coreferences
-    resolved_text = solve_coreferences(cleaned_text, coref_solver=coref_solver)
-
-    return resolved_text
+    return solve_coreferences(cleaned_text, coref_solver=coref_solver, use_gpu=use_gpu)
 
 
 def clean_text(text):
@@ -104,32 +88,20 @@ def clean_text(text):
 
     return cleaned_text.strip()
 
-
-def solve_coreferences(text, coref_solver="fastcoref"):
-    """
-    Resolves coreferences in a given text using either the Stanza library or fastcoref.
-
-    Args:
-        text (str): The input text to resolve coreferences in.
-        coref_solver (str): The coreference solver to use. Currently supports 'stanza' and 'fastcoref'.
-    Return:
-        str: The text with coreferences resolved.
-    """
-
+# block changed by Navid 6/30
+def solve_coreferences(text, coref_solver="fastcoref", use_gpu=False):
     if coref_solver not in {"stanza", "fastcoref"}:
         raise ValueError(
             "Only stanza and fastcoref coreference solvers are supported at the moment."
         )
-
     if coref_solver == "stanza":
-        # Load the Stanza pipeline
-        stanzanlp = get_stanza_nlp()
-        # Process the text
+        stanzanlp = get_stanza_nlp(use_gpu=use_gpu)
         doc = stanzanlp(text)
-        output_text = stanza_solve_coreferences(doc)
+        return stanza_solve_coreferences(doc)
+    elif coref_solver == "fastcoref":
+        return fastcoref_solve_coreferences(text, use_gpu=use_gpu)
 
-    if coref_solver == "fastcoref":
-        output_text = fastcoref_solve_coreferences(text)
+
 
     return output_text
 
@@ -220,8 +192,8 @@ def resolve_coref_prediction(pred_result, original_text):
 
     return _apply_replacements(original_text, replacements)
 
-
-def fastcoref_solve_coreferences(text_to_resolve):
+# block changed by Navid 6/30
+def fastcoref_solve_coreferences(text_to_resolve, use_gpu=False):
     """
     Replaces coreferent mentions with their representative texts.
 
@@ -236,7 +208,8 @@ def fastcoref_solve_coreferences(text_to_resolve):
     Returns:
         str: The text with coreferences resolved.
     """
-    model = load_fastcoref_model(device="cpu")
+    device = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
+    model = load_fastcoref_model(device=device)
 
     # fastcoref expects a list of texts; depending on the version, predict()
     # may return a single CorefResult or a list of them.
@@ -328,3 +301,5 @@ def stanza_solve_coreferences(doc):
         )
 
     return _apply_replacements(original_text, replacement_dicts)
+
+

@@ -30,24 +30,19 @@ def spacynlp(text):
 
 _wordnet_checked = False
 
+
 def ensure_wordnet_downloaded():
-    """Ensure WordNet exists, silently, without repeated noisy downloads."""
+    """Download the WordNet corpus on first use (no-op afterwards)."""
     global _wordnet_checked
     if _wordnet_checked:
         return
-
     import nltk
     from nltk.data import find
 
-    for resource in ("corpora/wordnet", "corpora/wordnet.zip"):
-        try:
-            find(resource)
-            _wordnet_checked = True
-            return
-        except LookupError:
-            pass
-
-    nltk.download("wordnet", quiet=True)
+    try:
+        find("corpora/wordnet")
+    except LookupError:
+        nltk.download("wordnet")
     _wordnet_checked = True
 
 
@@ -59,16 +54,23 @@ def get_spacy_nlp():
             _nlp_spacy = spacy.load("en_core_web_trf")
     return _nlp_spacy
 
-
-def get_stanza_nlp():
+# function changed by Navid 6/30
+def get_stanza_nlp(use_gpu=False):
     import stanza
+    import torch
 
     global _nlp_stanza
     if _nlp_stanza is None:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+            gpu_available = use_gpu and torch.cuda.is_available()
+            if use_gpu and not gpu_available:
+                print("[GPU] stanza: CUDA not available, falling back to CPU")
             _nlp_stanza = stanza.Pipeline(
-                lang="en", processors="tokenize,coref", verbose=False
+                lang="en",
+                processors="tokenize,coref",
+                verbose=False,
+                use_gpu=gpu_available,
             )
     return _nlp_stanza
 

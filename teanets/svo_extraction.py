@@ -23,8 +23,8 @@ _NONPASSIVE_AUX_LEMMAS = {
     "could", "might", "may", "must", "can",
 }
 
-
-def extract_svos_from_text(text, coref_solver="fastcoref", semantic_relations=True):
+# block changed by Navid 6/30
+def extract_svos_from_text(text, coref_solver="fastcoref", semantic_relations=True, use_gpu=False):
     """
     Extract Subject-Verb-Object (SVO) triples from a given text.
 
@@ -38,7 +38,7 @@ def extract_svos_from_text(text, coref_solver="fastcoref", semantic_relations=Tr
         If True (default), also add WordNet-synonymy edges between nodes of
         the same role. Set to False to speed up large batch jobs.
     """
-    prepared_text = text_preparation(text, coref_solver=coref_solver)
+    prepared_text = text_preparation(text, coref_solver=coref_solver, use_gpu=use_gpu)
     doc = spacynlp(prepared_text)
     svos = extract_svos(doc, semantic_relations=semantic_relations)
     return svos
