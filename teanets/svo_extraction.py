@@ -936,9 +936,19 @@ def extract_objects(object_token):
     """
     objects = []
 
-    # Check if the token is a noun, proper noun, or pronoun
-    if (object_token.pos_ in {"NOUN", "PROPN", "PRON"}) or (
-        object_token.dep_ in ("acomp")
+    # Handle partitive numerals (e.g., "one of the boxes"): resolve to the
+    # noun governed by "of" instead of the bare numeral
+    if object_token.pos_ == "NUM" and object_token.dep_ == "attr":
+        for child in object_token.children:
+            if child.dep_ == "prep" and child.lemma_ == "of":
+                for pobj in [gc for gc in child.children if gc.dep_ == "pobj"]:
+                    objects.append(get_compound_parts(pobj))
+        if objects:
+            return objects
+
+    # Check if the token is a noun, proper noun, pronoun, numeral or adjective
+    if (object_token.pos_ in {"NOUN", "PROPN", "PRON", "NUM", "ADJ"}) or (
+        object_token.dep_ in ("acomp", "attr")
     ):
         # Extract compounds and the main noun
         main_part, prep_parts = get_compound_parts(object_token)
@@ -953,7 +963,7 @@ def extract_objects(object_token):
     conjunct_objects = [
         conj
         for conj in object_token.conjuncts
-        if conj.pos_ in {"NOUN", "PROPN", "PRON", "ADJ"}
+        if conj.pos_ in {"NOUN", "PROPN", "PRON", "ADJ", "NUM"}
     ]
     for conj in conjunct_objects:
         # Extract compounds and the main noun for the conjunct
