@@ -79,6 +79,15 @@ To ensure accuracy, we validated the extraction logic against a **Gold Standard*
 - **pip** package manager
 - **Git** — currently the package is installed through this GitHub repository, so Git must be installed.
 
+### Automated setup (recommended)
+
+Self-installing scripts that create the virtual environment, detect CUDA-capable NVIDIA GPUs (installing CuPy when available), install `teanets` with the spaCy model, and register the Jupyter kernel:
+
+- **Windows** — download and run [`setup_teanets_windows.bat`](setup_teanets_windows.bat) (add `/cpu` to force a CPU-only install)
+- **Linux** — download and run [`setup_teanets_linux.sh`](setup_teanets_linux.sh) (add `--cpu` to force a CPU-only install)
+
+Prefer a manual installation? Follow the steps below.
+
 ### Local development setup (cloned repository)
 
 #### Option A — Regular install (just use the library)
