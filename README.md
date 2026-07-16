@@ -75,7 +75,7 @@ To ensure accuracy, we validated the extraction logic against a **Gold Standard*
 
 ### Prerequisites
 
-- **Python 3.9–3.12** — Python 3.13 and above are not yet supported. The spaCy 3.8 stack (`spacy-transformers`, `spacy-alignments`, `en_core_web_trf`) has no prebuilt wheels for newer versions, so installation would require building from source with a Rust compiler.
+- **Python 3.10–3.12** — Python 3.13 and above are not yet supported. The spaCy 3.8 stack (`spacy-transformers`, `spacy-alignments`, `en_core_web_trf`) has no prebuilt wheels for newer versions, so installation would require building from source with a Rust compiler. Python 3.9 does not work either: the `udtools==0.2.8` dependency requires Python ≥3.10.
 - **pip** package manager
 - **Git** — currently the package is installed through this GitHub repository, so Git must be installed.
 
@@ -86,6 +86,20 @@ Self-installing scripts that create the virtual environment, detect CUDA-capable
 - **Windows** — download and run [`setup_teanets_windows.bat`](setup_teanets_windows.bat) (add `/cpu` to force a CPU-only install)
 - **Linux** — download and run [`setup_teanets_linux.sh`](setup_teanets_linux.sh) (add `--cpu` to force a CPU-only install)
 - **macOS** — download and run [`setup_teanets_macos.sh`](setup_teanets_macos.sh) (always CPU-only; macOS has no CUDA support)
+
+#### Troubleshooting on macOS (older Intel Macs)
+
+The macOS script was tested on an older Intel iMac; three issues can come up:
+
+- **Python too old** — older macOS versions ship Python 3.9, which is no longer supported (see Prerequisites). Install Python 3.12 with the [python.org installer](https://www.python.org/downloads/macos/), delete any previously created environment (`rm -rf ~/teanets/teanets-env`), and rerun the script. At startup the script should print `Creating virtual environment with: python3.12`.
+- **Xcode license not accepted** — if the script stops with `You have not agreed to the Xcode license agreements`, run `sudo xcodebuild -license accept` (it asks for your Mac password) and rerun the script.
+- **spaCy fails to build from source** (`No matching distribution found for thinc<8.4.0,>=8.3.12`) — recent spaCy releases ship no prebuilt wheels for Intel Macs, so pip tries to compile spaCy and fails. Install a prebuilt spaCy into the environment first, then rerun the script:
+
+  ```bash
+  source ~/teanets/teanets-env/bin/activate
+  python -m pip install --prefer-binary --only-binary spacy "spacy>=3.8,<3.9"
+  bash setup_teanets_macos.sh
+  ```
 
 Prefer a manual installation? Follow the steps below.
 
