@@ -85,6 +85,7 @@ Self-installing scripts that create the virtual environment, detect CUDA-capable
 
 - **Windows** — download and run [`setup_teanets_windows.bat`](setup_teanets_windows.bat) (add `/cpu` to force a CPU-only install)
 - **Linux** — download and run [`setup_teanets_linux.sh`](setup_teanets_linux.sh) (add `--cpu` to force a CPU-only install)
+- **macOS** — download and run [`setup_teanets_macos.sh`](setup_teanets_macos.sh) (always CPU-only; macOS has no CUDA support)
 
 Prefer a manual installation? Follow the steps below.
 

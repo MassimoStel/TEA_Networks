@@ -13,7 +13,8 @@ vaderSentiment==3.3.2
 pandas==2.2.3
 tqdm
 en_core_web_trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl
-cupy-cuda12x==13.0.0
+# CuPy has CUDA wheels only for Linux/Windows; macOS has no CUDA support.
+cupy-cuda12x==13.0.0; sys_platform != "darwin"
 seaborn
 ipykernel
 pyarrow==14.0.2

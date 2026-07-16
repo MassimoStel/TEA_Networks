@@ -36,6 +36,7 @@ set "FORCE_CPU=0"
 
 if /I "%~1"=="/cpu" set "FORCE_CPU=1"
 if /I "%~1"=="-cpu" set "FORCE_CPU=1"
+if /I "%~1"=="--cpu" set "FORCE_CPU=1"
 
 call :ensure_python
 if errorlevel 1 goto :fatal
