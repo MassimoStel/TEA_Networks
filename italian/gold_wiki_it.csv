@@ -1,0 +1,13 @@
+doc,sent_id,sentence,agent,event,target,passive_approx,is_passive,prodrop
+rlm,0,Rita Levi-Montalcini è stata una neurologa italiana.,rita levi-montalcini,essere,neurologa italiano,0,0,0
+rlm,1,Negli anni cinquanta scoprì e illustrò il fattore di accrescimento della fibra nervosa.,rita levi-montalcini,scoprire,fattore,0,0,1
+rlm,2,Per tale scoperta è stata insignita del premio Nobel per la medicina.,rita levi-montalcini,insignire,,1,1,1
+rlm,3,È stata la prima donna ammessa alla Pontificia accademia delle scienze.,rita levi-montalcini,essere,primo donna,0,0,1
+rlm,4,Il primo agosto 2001 è stata nominata senatrice a vita dal presidente Carlo Azeglio Ciampi.,presidente carlo azeglio ciampi,nominare,,0,1,0
+rlm,5,È stata socia nazionale dell'Accademia dei Lincei.,rita levi-montalcini,essere,socia nazionale,0,0,1
+turing,6,Alan Mathison Turing è stato un matematico e logico britannico.,alan mathison turing,essere,matematico,0,0,0
+turing,7,Il suo lavoro ha influenzato profondamente la nascita della disciplina informatica.,lavoro,influenzare,nascita,0,0,0
+turing,8,Per questo contributo è generalmente riconosciuto come il padre della scienza informatica.,turing,riconoscere,,1,1,1
+turing,9,Turing fu uno dei più brillanti crittoanalisti del Regno Unito.,turing,essere,uno,0,0,0
+turing,10,Turing prestò servizio presso Bletchley Park.,turing,prestare,servizio,0,0,0
+turing,11,Sviluppò una serie di tecniche innovative per violare i cifrari tedeschi.,turing,sviluppare,serie,0,0,1

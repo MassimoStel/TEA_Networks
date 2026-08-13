@@ -253,6 +253,21 @@ You can access the Google Colab demo here: [Target-Event-Agent Demo](https://col
 
 Franchini, S., Carrillo, A., De Duro, E. S., Improta, R., Ardebili, A. A., & Stella, M. (2026). TEA Nets combine AI and cognitive network science to model actors, actions, and consequences in text [Preprint]. arXiv. https://github.com/MassimoStel/TEA_Networks
 
+## Italian adaptation (`italian/`)
+
+A community adaptation of the TEA pipeline to **Italian** lives in the
+[`italian/`](./italian) folder. The upstream code is English-only (ClearNLP
+dependency labels, VADER, English WordNet, fastcoref); the adaptation
+re-implements the same Agent–Event–Target semantics on Universal Dependencies
+with `it_core_news_lg`, localises valence (Italian lexicon) and synonymy
+(Italian WordNet), and adds a **pro-drop resolver** for Italian's dropped
+subjects. See [`italian/README_IT.md`](./italian/README_IT.md) and
+[`italian/VALIDATION_REPORT_IT.md`](./italian/VALIDATION_REPORT_IT.md).
+
+Highlights (validation): Agent F1 **0.988**, passive-voice accuracy **0.984** on
+a parallel gold set; on real texts the pro-drop resolver recovers dropped
+subjects 13/18 and lifts Agent F1 up to +0.25.
+
 ## References:
 - *Stella, M. (2020). Text-mining forma mentis networks reconstruct public perception of the STEM gender gap in social media. PeerJ Computer Science, 6, e295.*
 - *Hutto, C., & Gilbert, E. (2014, May). Vader: A parsimonious rule-based model for sentiment analysis of social media text. In Proceedings of the international AAAI conference on web and social media (Vol. 8, No. 1, pp. 216-225).*
