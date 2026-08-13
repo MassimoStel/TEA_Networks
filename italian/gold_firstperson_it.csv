@@ -1,0 +1,8 @@
+doc,sent_id,sentence,agent,event,target,passive_approx,is_passive,prodrop
+svevo,0,Io sono il dottore di cui in questa novella si parla.,io,essere,dottore,0,0,0
+svevo,1,Debbo scusarmi di aver indotto il mio paziente a scrivere la sua autobiografia.,io,scusare,,0,0,1
+svevo,2,Ma egli era vecchio.,egli,essere,vecchio,0,0,0
+svevo,3,Io sperai che il suo passato si rinverdisse.,io,sperare,,0,0,0
+svevo,4,Le pubblico per vendetta.,io,pubblicare,,0,0,1
+svevo,5,Spero gli dispiaccia.,io,sperare,,0,0,1
+svevo,6,Sembrava tanto curioso di se stesso.,paziente,sembrare,curioso,0,0,1

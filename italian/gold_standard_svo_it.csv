@@ -1,0 +1,123 @@
+sent_id,sentence,agent,event,target,passive_approx,is_passive
+0,Il gatto inseguì il topo.,gatto,inseguire,topo,0,0
+1,Giovanni legge i libri.,giovanni,leggere,libro,0,0
+2,Maria ama il cioccolato.,maria,amare,cioccolato,0,0
+3,Il cane abbaia forte.,cane,abbaiare,,0,0
+4,Il sole tramonta a ovest.,sole,tramontare,a ovest,0,0
+5,Gli uccelli volano.,uccello,volare,,0,0
+6,Lo studente sta leggendo un libro.,studente,leggere,libro,0,0
+7,Loro hanno finito i compiti.,loro,finire,compito,0,0
+8,Lui mangerà la mela.,lui,mangiare,mela,0,0
+9,La squadra aveva perso la partita.,squadra,perdere,partita,0,0
+10,Il topo fu inseguito dal gatto.,gatto,inseguire,topo,0,1
+11,Il libro fu scritto da Giovanni.,giovanni,scrivere,libro,0,1
+12,La macchina è riparata dal meccanico.,meccanico,riparare,macchina,0,1
+13,La lettera fu consegnata dal postino.,postino,consegnare,lettera,0,1
+14,La finestra fu rotta.,finestra,rompere,,1,1
+15,Il progetto è completato.,progetto,completare,,1,1
+16,Il sospettato è stato arrestato.,sospettato,arrestare,,1,1
+17,Furono commessi errori.,errore,commettere,,1,1
+18,Tom diede un regalo a Maria.,tom,dare,regalo,0,0
+19,L'insegnante insegnò storia agli studenti.,insegnante,insegnare,storia,0,0
+20,Lei gli porse le chiavi.,lei,porgere,chiave,0,0
+21,Io comprai un caffè per il mio amico.,io,comprare,caffè,0,0
+22,Il gatto non inseguì il topo.,gatto,non inseguire,topo,0,0
+23,Lui non ama le verdure.,lui,non amare,verdura,0,0
+24,Loro non hanno visto il film.,loro,non vedere,film,0,0
+25,Lei non accetterà l'offerta.,lei,non accettare,offerta,0,0
+26,Il gatto inseguì il topo?,gatto,inseguire,topo,0,0
+27,Tu hai visto le mie chiavi?,tu,vedere,chiave,0,0
+28,Chi mangiò la torta?,chi,mangiare,torta,0,0
+29,Cosa disse lei?,lei,dire,cosa,0,0
+30,L'uomo che lanciò la palla è mio amico.,uomo,essere,amico,0,0
+31,La macchina che comprai è veloce.,macchina,essere,veloce,0,0
+32,Il libro che lei lesse era interessante.,libro,essere,interessante,0,0
+33,Le persone lanciano pietre.,persona,lanciare,pietra,0,0
+34,Alice e Bob giocarono a tennis.,alice,giocare,a tennis,0,0
+35,Il gatto inseguì il topo e l'uccello.,gatto,inseguire,topo,0,0
+36,Lui mangiò un hamburger e bevve una bibita.,lui,mangiare,hamburger,0,0
+37,Sia il direttore sia i dipendenti parteciparono alla riunione.,direttore,partecipare,a riunione,0,0
+38,Lei vuole imparare il francese.,lei,imparare,francese,0,0
+39,Loro decisero di restare a casa.,loro,decidere,a casa,0,0
+40,Lui ama suonare la chitarra.,lui,amare,chitarra,0,0
+41,Io devo trovare un nuovo lavoro.,io,trovare,nuovo lavoro,0,0
+42,L'azienda dovrebbe aumentare i suoi profitti.,azienda,aumentare,profitto,0,0
+43,Noi dobbiamo risolvere questo problema.,noi,risolvere,problema,0,0
+44,Loro potrebbero annullare l'evento.,loro,annullare,evento,0,0
+45,Tu puoi ottenere qualsiasi cosa.,tu,ottenere,cosa,0,0
+46,"Sebbene fosse stanco, lui finì il lavoro.",lui,finire,lavoro,0,0
+47,"Poiché piovve, loro annullarono il picnic.",loro,annullare,picnic,0,0
+48,"Se tu studi molto, tu passerai l'esame.",tu,passare,esame,0,0
+49,"Mentre lei dormiva, il telefono squillò.",telefono,squillare,,0,0
+50,Il paziente fu aiutato dal medico.,medico,aiutare,paziente,0,1
+51,La canzone fu cantata dal coro.,coro,cantare,canzone,0,1
+52,La casa fu costruita dagli operai.,operaio,costruire,casa,0,1
+53,Il rapporto fu esaminato dal comitato.,comitato,esaminare,rapporto,0,1
+54,La torta fu mangiata.,torta,mangiare,,1,1
+55,La porta fu chiusa.,porta,chiudere,,1,1
+56,I file sono stati eliminati.,file,eliminare,,1,1
+57,La città fu distrutta dal terremoto.,terremoto,distruggere,città,0,1
+58,Lei fu premiata dal suo capo.,capo,premiare,lei,0,1
+59,I bambini furono istruiti dal tutor.,tutor,istruire,bambino,0,1
+60,Il messaggio fu inoltrato dall'assistente.,assistente,inoltrare,messaggio,0,1
+61,Il ponte fu danneggiato dalla tempesta.,tempesta,danneggiare,ponte,0,1
+62,La proposta fu respinta.,proposta,respingere,,1,1
+63,La partita fu vinta dagli ospiti.,ospite,vincere,partita,0,1
+64,Lo scienziato scoprì una nuova specie.,scienziato,scoprire,nuovo specie,0,0
+65,L'artista dipinse un paesaggio.,artista,dipingere,paesaggio,0,0
+66,Lo chef preparò un pasto.,chef,preparare,pasto,0,0
+67,Il fulmine colpì il vecchio albero.,fulmine,colpire,vecchio albero,0,0
+68,La giuria condannò l'imputato.,giuria,condannare,imputato,0,0
+69,Il terremoto scosse l'intera città.,terremoto,scuotere,intero città,0,0
+70,I ricercatori pubblicarono i risultati.,ricercatore,pubblicare,risultato,0,0
+71,Il presidente firmò la nuova legge.,presidente,firmare,nuovo legge,0,0
+72,Il fiume inondò il villaggio.,fiume,inondare,villaggio,0,0
+73,Il bambino ruppe il vaso.,bambino,rompere,vaso,0,0
+74,Nessuno previde l'annuncio.,nessuno,prevedere,annuncio,0,0
+75,Tutti apprezzarono lo spettacolo.,tutto,apprezzare,spettacolo,0,0
+76,L'orchestra eseguì una sinfonia.,orchestra,eseguire,sinfonia,0,0
+77,Lei gli disse la verità.,lei,dire,verità,0,0
+78,"Dopo che la riunione finì, la squadra festeggiò.",squadra,festeggiare,,0,0
+79,"Quando l'allarme suonò, tutti evacuarono.",tutto,evacuare,,0,0
+80,Il software fu sviluppato da un piccolo team.,piccolo team,sviluppare,software,0,1
+81,Il vaccino fu distribuito.,vaccino,distribuire,,1,1
+82,Il dipinto fu recuperato.,dipinto,recuperare,,1,1
+83,I fiori furono annaffiati.,fiore,annaffiare,,1,1
+84,Lui fu promosso.,lui,promuovere,,1,1
+85,Le montagne possono essere viste.,montagna,vedere,,1,1
+86,Il vincitore fu annunciato a mezzanotte.,vincitore,annunciare,,1,1
+87,L'italiano è parlato nel mondo.,italiano,parlare,,1,1
+88,I dati furono raccolti.,dato,raccogliere,,1,1
+89,I prigionieri furono rilasciati.,prigioniero,rilasciare,,1,1
+90,Il cane fu catturato.,cane,catturare,,1,1
+91,Lei chiese se lui avesse finito.,lei,chiedere,,0,0
+92,Il comitato raccomandò dei cambiamenti.,comitato,raccomandare,cambiamento,0,0
+93,Il tempo vola.,tempo,volare,,0,0
+94,Il bambino pianse.,bambino,piangere,,0,0
+95,Le stelle brillano.,stella,brillare,,0,0
+96,L'acqua bolle a cento gradi.,acqua,bollire,a grado,0,0
+97,Il contadino coltiva grano e mais.,contadino,coltivare,grano,0,0
+98,"Nonostante la pioggia, la partita continuò.",partita,continuare,,0,0
+99,Lei non solo canta ma balla anche.,lei,cantare,,0,0
+100,Io fui abusato da lui.,lui,abusare,io,0,1
+101,Io fui abusato.,io,abusare,,1,1
+102,Io fui tradito dal mio migliore amico.,migliore amico,tradire,io,0,1
+103,Io fui tradito.,io,tradire,,1,1
+104,Io fui manipolato.,io,manipolare,,1,1
+105,Io fui minacciato.,io,minacciare,,1,1
+106,Lei fu attaccata da tutti.,tutto,attaccare,lei,0,1
+107,Lui fu picchiato dalla folla.,folla,picchiare,lui,0,1
+108,Io fui tenuto fermo e violentato.,io,tenere,,1,1
+109,Lei fu picchiata e derubata.,lei,picchiare,,1,1
+110,Io fui violentato.,io,violentare,,1,1
+111,Io fui violentato da mio zio.,zio,violentare,io,0,1
+112,Io fui aggredito.,io,aggredire,,1,1
+113,Lui fu arrestato dalla polizia.,polizia,arrestare,lui,0,1
+114,Lui fu arrestato.,lui,arrestare,,1,1
+115,Lei fu licenziata dal suo capo.,capo,licenziare,lei,0,1
+116,Lei fu licenziata.,lei,licenziare,,1,1
+117,Il rapporto fu scritto e revisionato dal comitato.,comitato,scrivere,rapporto,0,1
+118,Lei fu fortunata.,lei,essere,fortunato,0,0
+119,Lui era felice.,lui,essere,felice,0,0
+120,Io diventai una vittima.,io,diventare,vittima,0,0
+121,Il medico aiutò il paziente.,medico,aiutare,paziente,0,0

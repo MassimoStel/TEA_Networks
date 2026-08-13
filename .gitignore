@@ -35,3 +35,7 @@ demo_svo_output/
 
 # Generated batch-extraction output (large, regenerable)
 Docs & Guides/house_svo_output/
+
+# Italian CorefUD training data & cache (large, regenerable)
+italian/.corefud_cache/
+italian/corefud_builder/

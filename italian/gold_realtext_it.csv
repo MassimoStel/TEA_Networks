@@ -1,0 +1,21 @@
+sent_id,sentence,agent,event,target,passive_approx,is_passive,prodrop
+0,In quel punto fu bussato alla porta.,,bussare,,1,1,0
+1,Allora entrò in bottega un vecchietto tutto arzillo.,vecchietto arzillo,entrare,in bottega,0,0,0
+2,Geppetto era bizzosissimo.,geppetto,essere,bizzosissimo,0,0,0
+3,Diventava subito una bestia.,geppetto,diventare,bestia,0,0,1
+4,"A sentirsi chiamar Polendina, compar Geppetto diventò rosso come un peperone dalla bizza.",geppetto,diventare,rosso,0,0,0
+5,"Voltandosi verso il falegname, gli disse imbestialito.",geppetto,dire,,0,0,1
+6,"E riscaldandosi sempre più, vennero dalle parole ai fatti.",loro,venire,,0,0,1
+7,"Si graffiarono, si morsero e si sbertucciarono.",loro,graffiare,,0,0,1
+8,"Finito il combattimento, mastr'Antonio si trovò fra le mani la parrucca gialla di Geppetto.",antonio,trovare,parrucca giallo,0,0,0
+9,Geppetto si accorse di avere in bocca la parrucca brizzolata del falegname.,geppetto,accorgere,parrucca brizzolato,0,0,0
+10,I due vecchietti si strinsero la mano e giurarono di rimanere buoni amici.,vecchietto,stringere,mano,0,0,0
+11,Mastr'Antonio andò subito a prendere sul banco quel pezzo di legno.,antonio,andare,pezzo,0,0,0
+12,Il pezzo di legno dette uno scossone.,pezzo,dare,scossone,0,0,0
+13,Andò a battere con forza negli stinchi impresciuttiti del povero Geppetto.,pezzo,andare,,0,0,1
+14,Geppetto perse il lume degli occhi.,geppetto,perdere,lume,0,0,0
+15,Si avventò sul falegname.,geppetto,avventare,,0,0,1
+16,"A battaglia finita, mastr'Antonio si trovò due graffi di più sul naso.",antonio,trovare,graffio,0,0,0
+17,"Pareggiati in questo modo i loro conti, si strinsero la mano e giurarono di rimanere amici.",loro,stringere,mano,0,0,1
+18,Intanto Geppetto prese con sè il suo bravo pezzo di legno.,geppetto,prendere,bravo pezzo,0,0,0
+19,Se ne tornò zoppicando a casa.,geppetto,tornare,,0,0,1
