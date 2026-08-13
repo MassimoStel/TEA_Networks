@@ -481,7 +481,8 @@ def extract_main_triple_it(doc):
 # ---------------------------------------------------------------------------
 # Full TEA hypergraph (same DataFrame schema as teanets.extract_svos)
 # ---------------------------------------------------------------------------
-def extract_tea_it(doc, semantic_relations=True, resolve_prodrop=False, resolver=None):
+def extract_tea_it(doc, semantic_relations=True, resolve_prodrop=False,
+                   resolver=None, use_xlmr=False):
     """
     Build the TEA edge DataFrame (Agent/Event/Target hypergraph) for *doc*,
     matching the column schema of `teanets.svo_extraction.extract_svos`.
@@ -489,17 +490,26 @@ def extract_tea_it(doc, semantic_relations=True, resolve_prodrop=False, resolver
     Parameters
     ----------
     resolve_prodrop : bool
-        If True, recover dropped subjects (pro-drop) via the morphological
-        coreference resolver in ``prodrop_coref``. Clause heads are processed
-        in text order so subject continuity propagates across clauses/sentences.
-    resolver : prodrop_coref.ProDropResolver, optional
+        If True, recover dropped subjects (pro-drop) via coreference
+        resolution. Clause heads are processed in text order so subject
+        continuity propagates across clauses/sentences.
+    resolver : ProDropResolver or ProDropResolverXLMR, optional
         An explicit resolver to carry discourse state across multiple calls
         (e.g. document processed sentence-by-sentence). If None and
         ``resolve_prodrop`` is True, a fresh resolver is created for this doc.
+    use_xlmr : bool
+        If True (and no explicit *resolver* is given), use the XLM-R +
+        LightGBM trained resolver instead of the morphological baseline.
+        Requires ``coref_it_xlmr.joblib``.
     """
     if resolve_prodrop and resolver is None:
-        from prodrop_coref import ProDropResolver
-        resolver = ProDropResolver()
+        if use_xlmr:
+            from prodrop_coref_xlmr import ProDropResolverXLMR
+            resolver = ProDropResolverXLMR()
+            resolver.encode_document(doc)
+        else:
+            from prodrop_coref import ProDropResolver
+            resolver = ProDropResolver()
 
     triples = []  # (subs, event, objs, passive_approx, is_passive)
     # sort heads by position so the resolver sees antecedents left-to-right
@@ -513,16 +523,16 @@ def extract_tea_it(doc, semantic_relations=True, resolve_prodrop=False, resolver
                 r = resolver.resolve(head)
                 if r is not None:
                     subs = [r]
-            from prodrop_coref import update_history
-            # The discourse topic is the GRAMMATICAL subject: for a passive
-            # with an explicit agent that is the patient (objs), not the
-            # semantic agent (subs) — otherwise a by-agent would hijack
-            # subject continuity.
             if pinfo["is_passive"] and pinfo["has_agent"]:
                 topic = objs[0] if objs else None
             else:
                 topic = subs[0] if subs else None
-            update_history(resolver, head, topic)
+            if hasattr(resolver, 'register_mention'):
+                from prodrop_coref_xlmr import update_history_xlmr
+                update_history_xlmr(resolver, head, topic)
+            else:
+                from prodrop_coref import update_history
+                update_history(resolver, head, topic)
         passive_approx = pinfo["is_passive"] and not pinfo["has_agent"]
         triples.append((subs, event, objs, passive_approx, pinfo["is_passive"]))
 
@@ -574,9 +584,12 @@ def extract_tea_it(doc, semantic_relations=True, resolve_prodrop=False, resolver
         dtype=object)
 
 
-def extract_tea_from_text_it(text, semantic_relations=True, resolve_prodrop=False):
+def extract_tea_from_text_it(text, semantic_relations=True,
+                            resolve_prodrop=False, use_xlmr=False):
     """Convenience: text -> TEA DataFrame. Set ``resolve_prodrop=True`` to
-    recover dropped subjects via the morphological coreference resolver."""
+    recover dropped subjects via coreference resolution. Set ``use_xlmr=True``
+    to use the trained XLM-R + LightGBM resolver."""
     return extract_tea_it(get_it_nlp()(text),
                           semantic_relations=semantic_relations,
-                          resolve_prodrop=resolve_prodrop)
+                          resolve_prodrop=resolve_prodrop,
+                          use_xlmr=use_xlmr)
