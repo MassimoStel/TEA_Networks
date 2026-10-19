@@ -2,9 +2,13 @@
 
 ## Prerequisites
 
-- **Python 3.9–3.12** — Python 3.13 and above are not yet supported. The spaCy 3.8 stack (`spacy-transformers`, `spacy-alignments`, `en_core_web_trf`) has no prebuilt wheels for newer versions, so installation would require building from source with a Rust compiler.
+- **Python 3.10–3.12** — Python 3.13 and above are not yet supported. The spaCy 3.8 stack (`spacy-transformers`, `spacy-alignments`, `en_core_web_trf`) has no prebuilt wheels for newer versions, so installation would require building from source with a Rust compiler.
 - **pip** package manager
-- **Git** — currently the package is installed through this GitHub repository, so Git must be installed.
+- **Git** — required for installs from GitHub, but not when installing from the extracted ZIP.
+
+## Installation from a downloaded ZIP
+
+Extract the ZIP and install from its `TEA_Networks-main` directory with `python -m pip install .`, then run `python -m spacy download en_core_web_trf`. This installs the corrected local files; the GitHub installation command below uses the remote version until the changes are merged. CUDA/CuPy is optional (`python -m pip install ".[cuda12]"` on supported Linux/Windows CUDA 12 systems).
 
 ## Local development setup (cloned repository)
 
