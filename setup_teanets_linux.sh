@@ -5,13 +5,13 @@
 # Method A and cuda-installation.md.
 #
 # What it does:
-#   1. Checks for Python 3.9-3.12 and Git; suggests distro packages if missing.
+#   1. Checks for Python 3.10-3.12 and Git; suggests distro packages if missing.
 #   2. Creates/updates a Python virtual environment: $HOME/teanets/teanets-env
 #   3. Checks for CUDA-capable NVIDIA hardware (nvidia-smi or lspci).
 #   4. If CUDA is available, installs cupy-cuda12x first and verifies it.
 #      (On Linux the cupy-cuda12x wheels bundle the CUDA runtime, so only
 #      the NVIDIA driver is required — no CUDA Toolkit installation.)
-#   5. Installs teanets from GitHub, downloads en_core_web_trf, and
+#   5. Installs teanets from local source (or GitHub), downloads en_core_web_trf, and
 #      registers a Jupyter kernel.
 #
 # Optional switch:
@@ -25,6 +25,7 @@ ENV_DIR="$INSTALL_DIR/teanets-env"
 KERNEL_NAME="teanets"
 KERNEL_DISPLAY="Python (teanets)"
 REPO_URL="https://github.com/MassimoStel/TEA_Networks.git"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FORCE_CPU=0
 
 case "${1:-}" in
@@ -47,27 +48,29 @@ fatal() {
 # Prerequisite checks
 # ------------------------------------------------------------
 PYTHON_CMD=""
-for v in 3.12 3.11 3.10 3.9; do
+for v in 3.12 3.11 3.10; do
     if command -v "python$v" >/dev/null 2>&1; then
         PYTHON_CMD="python$v"
         break
     fi
 done
 if [ -z "$PYTHON_CMD" ] && command -v python3 >/dev/null 2>&1; then
-    if python3 -c 'import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
+    if python3 -c 'import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
         PYTHON_CMD="python3"
     fi
 fi
 if [ -z "$PYTHON_CMD" ]; then
-    echo "Python 3.9-3.12 was not found."
+    echo "Python 3.10-3.12 was not found."
     echo "Install it with your package manager, for example on Ubuntu/Debian:"
     echo "  sudo apt-get update && sudo apt-get install python3.11 python3.11-venv"
-    fatal "Python 3.9-3.12 is required."
+    fatal "Python 3.10-3.12 is required."
 fi
 echo "Found supported Python:"
 echo "  $("$PYTHON_CMD" --version 2>&1) via $PYTHON_CMD"
 
-if command -v git >/dev/null 2>&1; then
+if [ -f "$SCRIPT_DIR/setup.py" ]; then
+    echo "Found local teanets source; Git is not required."
+elif command -v git >/dev/null 2>&1; then
     echo "Found Git."
 else
     echo "Git was not found."
@@ -101,8 +104,8 @@ echo "Activating virtual environment..."
 # shellcheck disable=SC1091
 source "$ENV_DIR/bin/activate" || fatal "Could not activate the virtual environment."
 
-if ! python -c 'import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
-    echo "The existing virtual environment does not use Python 3.9-3.12."
+if ! python -c 'import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
+    echo "The existing virtual environment does not use Python 3.10-3.12."
     echo "Delete this folder and run the installer again:"
     echo "  $ENV_DIR"
     fatal "Unsupported Python version in the virtual environment."
@@ -147,7 +150,7 @@ if [ "$CUDA_CAPABLE" = "1" ]; then
     [ -n "${NVIDIA_DRIVER_VERSION:-}" ] && echo "NVIDIA driver: $NVIDIA_DRIVER_VERSION"
     echo
     echo "Installing CuPy for CUDA 12.x in the active teanets environment..."
-    # Pinned to the same version as requirements.txt: newer CuPy releases
+    # CuPy is optional; newer CuPy releases
     # (14.x) fail CUDA detection on some driver setups where 13.0.0 works.
     CUPY_OK=1
     python -m pip install --no-cache-dir cupy-cuda12x==13.0.0 || CUPY_OK=0
@@ -177,8 +180,13 @@ fi
 # teanets installation
 # ------------------------------------------------------------
 echo
-echo "Installing teanets from GitHub..."
-python -m pip install --no-cache-dir "git+$REPO_URL" || fatal "A pip command failed."
+if [ -f "$SCRIPT_DIR/setup.py" ]; then
+    echo "Installing teanets from the extracted ZIP..."
+    python -m pip install --no-cache-dir "$SCRIPT_DIR" || fatal "A pip command failed."
+else
+    echo "Installing teanets from GitHub..."
+    python -m pip install --no-cache-dir "git+$REPO_URL" || fatal "A pip command failed."
+fi
 
 echo
 echo "Downloading the transformer English spaCy model: en_core_web_trf"
