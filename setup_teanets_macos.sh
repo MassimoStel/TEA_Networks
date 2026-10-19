@@ -5,9 +5,9 @@
 # Method A.
 #
 # What it does:
-#   1. Checks for Python 3.9-3.12 and Git; suggests Homebrew packages if missing.
+#   1. Checks for Python 3.10-3.12 and Git; suggests Homebrew packages if missing.
 #   2. Creates/updates a Python virtual environment: $HOME/teanets/teanets-env
-#   3. Installs teanets from GitHub, downloads en_core_web_trf, and
+#   3. Installs teanets from local source (or GitHub), downloads en_core_web_trf, and
 #      registers a Jupyter kernel.
 #
 # macOS has no CUDA support, so the installation is always CPU-only
@@ -21,6 +21,7 @@ ENV_DIR="$INSTALL_DIR/teanets-env"
 KERNEL_NAME="teanets"
 KERNEL_DISPLAY="Python (teanets)"
 REPO_URL="https://github.com/MassimoStel/TEA_Networks.git"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "============================================================"
 echo "TEA Networks macOS setup: venv + CPU install + Jupyter kernel"
@@ -38,27 +39,29 @@ fatal() {
 # Prerequisite checks
 # ------------------------------------------------------------
 PYTHON_CMD=""
-for v in 3.12 3.11 3.10 3.9; do
+for v in 3.12 3.11 3.10; do
     if command -v "python$v" >/dev/null 2>&1; then
         PYTHON_CMD="python$v"
         break
     fi
 done
 if [ -z "$PYTHON_CMD" ] && command -v python3 >/dev/null 2>&1; then
-    if python3 -c 'import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
+    if python3 -c 'import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
         PYTHON_CMD="python3"
     fi
 fi
 if [ -z "$PYTHON_CMD" ]; then
-    echo "Python 3.9-3.12 was not found."
+    echo "Python 3.10-3.12 was not found."
     echo "Install it with Homebrew (https://brew.sh):"
     echo "  brew install python@3.12"
-    fatal "Python 3.9-3.12 is required."
+    fatal "Python 3.10-3.12 is required."
 fi
 echo "Found supported Python:"
 echo "  $("$PYTHON_CMD" --version 2>&1) via $PYTHON_CMD"
 
-if command -v git >/dev/null 2>&1; then
+if [ -f "$SCRIPT_DIR/setup.py" ]; then
+    echo "Found local teanets source; Git is not required."
+elif command -v git >/dev/null 2>&1; then
     echo "Found Git."
 else
     echo "Git was not found."
@@ -89,8 +92,8 @@ echo "Activating virtual environment..."
 # shellcheck disable=SC1091
 source "$ENV_DIR/bin/activate" || fatal "Could not activate the virtual environment."
 
-if ! python -c 'import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
-    echo "The existing virtual environment does not use Python 3.9-3.12."
+if ! python -c 'import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)' >/dev/null 2>&1; then
+    echo "The existing virtual environment does not use Python 3.10-3.12."
     echo "Delete this folder and run the installer again:"
     echo "  $ENV_DIR"
     fatal "Unsupported Python version in the virtual environment."
@@ -103,8 +106,13 @@ python -m pip install --upgrade pip setuptools wheel || fatal "A pip command fai
 # teanets installation
 # ------------------------------------------------------------
 echo
-echo "Installing teanets from GitHub..."
-python -m pip install --no-cache-dir "git+$REPO_URL" || fatal "A pip command failed."
+if [ -f "$SCRIPT_DIR/setup.py" ]; then
+    echo "Installing teanets from the extracted ZIP..."
+    python -m pip install --no-cache-dir "$SCRIPT_DIR" || fatal "A pip command failed."
+else
+    echo "Installing teanets from GitHub..."
+    python -m pip install --no-cache-dir "git+$REPO_URL" || fatal "A pip command failed."
+fi
 
 echo
 echo "Downloading the transformer English spaCy model: en_core_web_trf"
