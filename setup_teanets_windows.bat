@@ -9,11 +9,11 @@ rem Inspired by the supplied EmoAtlas installer, but follows
 rem TEA_Networks Installation.md Method A and cuda-installation.md.
 rem
 rem What it does:
-rem   1. Checks for Python 3.9-3.12 and Git; installs them via winget if possible.
+rem   1. Checks for Python 3.10-3.12 and Git; installs them via winget if possible.
 rem   2. Creates/updates a Python virtual environment: %USERPROFILE%\teanets\teanets-env
 rem   3. Checks for CUDA-capable NVIDIA hardware.
 rem   4. If CUDA is available, ensures CUDA Toolkit 12.6 and installs cupy-cuda12x first.
-rem   5. Installs teanets from GitHub, downloads en_core_web_trf, and registers a Jupyter kernel.
+rem   5. Installs teanets from local source (or GitHub), downloads en_core_web_trf, and registers a Jupyter kernel.
 rem
 rem Optional switch:
 rem   setup_teanets_windows.bat /cpu     Force CPU-only installation and skip CUDA.
@@ -29,6 +29,7 @@ set "ENV_DIR=%INSTALL_DIR%\teanets-env"
 set "KERNEL_NAME=teanets"
 set "KERNEL_DISPLAY=Python (teanets)"
 set "REPO_URL=https://github.com/MassimoStel/TEA_Networks.git"
+set "SCRIPT_DIR=%~dp0"
 set "CUDA_ROOT=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6"
 set "CUDA_INSTALLER_URL=https://developer.download.nvidia.com/compute/cuda/12.6.0/local_installers/cuda_12.6.0_560.76_windows.exe"
 set "CUDA_INSTALLER=%TEMP%\cuda_12.6.0_560.76_windows.exe"
@@ -41,8 +42,12 @@ if /I "%~1"=="--cpu" set "FORCE_CPU=1"
 call :ensure_python
 if errorlevel 1 goto :fatal
 
-call :ensure_git
-if errorlevel 1 goto :fatal
+if exist "%SCRIPT_DIR%setup.py" (
+    echo Found local teanets source; Git is not required.
+) else (
+    call :ensure_git
+    if errorlevel 1 goto :fatal
+)
 
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if errorlevel 1 goto :fatal
@@ -75,9 +80,9 @@ if errorlevel 1 (
     goto :fatal_popd
 )
 
-python -c "import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
+python -c "import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
 if errorlevel 1 (
-    echo ERROR: The existing virtual environment does not use Python 3.9-3.12.
+    echo ERROR: The existing virtual environment does not use Python 3.10-3.12.
     echo Delete this folder and run the installer again:
     echo   %ENV_DIR%
     goto :fatal_popd
@@ -123,8 +128,13 @@ if "%CUDA_CAPABLE%"=="1" (
 )
 
 echo.
-echo Installing teanets from GitHub...
-python -m pip install --no-cache-dir git+%REPO_URL%
+if exist "%SCRIPT_DIR%setup.py" (
+    echo Installing teanets from the extracted ZIP...
+    python -m pip install --no-cache-dir "%SCRIPT_DIR%."
+) else (
+    echo Installing teanets from GitHub...
+    python -m pip install --no-cache-dir git+%REPO_URL%
+)
 if errorlevel 1 goto :piperror_popd
 
 echo.
@@ -179,23 +189,23 @@ rem Prerequisite checks
 rem ------------------------------------------------------------
 :ensure_python
 set "PYTHON_CMD="
-for %%V in (3.12 3.11 3.10 3.9) do (
-    py -%%V -c "import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
+for %%V in (3.12 3.11 3.10) do (
+    py -%%V -c "import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
     if not errorlevel 1 (
         set "PYTHON_CMD=py -%%V"
         goto :python_found
     )
 )
-python -c "import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
+python -c "import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
 if not errorlevel 1 (
     set "PYTHON_CMD=python"
     goto :python_found
 )
 
-echo Python 3.9-3.12 was not found. Attempting to install Python 3.11 using winget...
+echo Python 3.10-3.12 was not found. Attempting to install Python 3.11 using winget...
 where winget >nul 2>nul
 if errorlevel 1 (
-    echo ERROR: winget is not available, and Python 3.9-3.12 is required.
+    echo ERROR: winget is not available, and Python 3.10-3.12 is required.
     echo Install Python 3.11 manually from python.org, then run this installer again.
     exit /b 1
 )
@@ -205,12 +215,12 @@ if errorlevel 1 (
     exit /b 1
 )
 set "PATH=%LOCALAPPDATA%\Programs\Python\Python311;%LOCALAPPDATA%\Programs\Python\Python311\Scripts;C:\Program Files\Python311;C:\Program Files\Python311\Scripts;%PATH%"
-py -3.11 -c "import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
+py -3.11 -c "import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
 if not errorlevel 1 (
     set "PYTHON_CMD=py -3.11"
     goto :python_found
 )
-python -c "import sys; raise SystemExit(0 if (3,9) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
+python -c "import sys; raise SystemExit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)" >nul 2>nul
 if not errorlevel 1 (
     set "PYTHON_CMD=python"
     goto :python_found
@@ -374,7 +384,7 @@ exit /b 0
 :install_and_verify_cupy
 echo.
 echo Installing CuPy for CUDA 12.x in the active teanets environment...
-rem Pinned to the same version as requirements.txt: newer CuPy releases
+rem CuPy is optional; newer CuPy releases
 rem (14.x) fail CUDA detection on some driver setups where 13.0.0 works.
 python -m pip install --no-cache-dir cupy-cuda12x==13.0.0
 if errorlevel 1 (
