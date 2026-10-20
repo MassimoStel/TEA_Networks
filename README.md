@@ -170,7 +170,7 @@ python -m ipykernel install --user --name teanets --display-name "Python (teanet
 
 ## Usage and guides
 
-For detailed documentation and examples, please refer to the folder 'Docs & Guides' or check out the Google Colab demo.
+For detailed documentation and examples, please refer to the folder 'Docs & Guides' or check out the Google Colab demo: [Target-Event-Agent Demo](https://colab.research.google.com/drive/1mFsPcCyc9Yl1KFk_AWjwqhsVnZsZ0izf?usp=sharing).
 
 
 ```python
@@ -245,7 +245,7 @@ The starting guide features a more complete description of the package and a usa
 
 ### Google Colab Demo
 
-You can access the Google Colab demo here: [Target-Event-Agent Demo](https://colab.research.google.com/drive/1fs73YQkPu55C_Cwt2lYhuvfc0aBXjnQo?usp=sharing).
+You can access the Google Colab demo here: [Target-Event-Agent Demo](https://colab.research.google.com/drive/1mFsPcCyc9Yl1KFk_AWjwqhsVnZsZ0izf?usp=sharing).
 
 
 ---
